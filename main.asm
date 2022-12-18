@@ -128,11 +128,11 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
-Loop:
+MainLoop:
 ; -------------------------------
 ; Overscan - 30 lines total
-	LDA	#2		; 3 clocks into overscan line 1 (JMP)
-	STA	_TIA_VBLANK	; turn blank on
+	LDA	#2		; +2 / 9
+	STA	_TIA_VBLANK	; +3 / 12 - turn blank on
 
 ; Skip 29 lines. 29 lines is 29*76 = 2204 CPU cycles, i.e. 34.43*64.
 ; In other words, 35 ticks of 64T is 29 lines + 36 CPU cycles.
@@ -181,57 +181,27 @@ TimVblank:
 	CMP	_PIA_RTIM
 	BNE	TimVblank
 
-	STA	_TIA_WSYNC	; vblank line 37
+	STA	_TIA_WSYNC	; end vblank line 37
+        			; +? / 0
 
 ; -------------------------------
-; Active lines 1-191
-	LDA	#0
-	STA	_TIA_VBLANK	; turn blank off
-	LDA	#20
-	STA	_PIA_WT64T
+; Active lines 1-192
+	LDA	#0		; +2 / 2
+	STA	_TIA_VBLANK	; +3 / 5 - turn blank off
 
-	.repeat 16
-	STA	_TIA_WSYNC
-	.repend
-
-	LDA	#1
-	CMP	_PIA_RTIM
-	BEQ	Was1
-Not1:
-	LDA	#_TIA_CO_PINK + _TIA_LU_MAX
-        STA	_TIA_COLUBK
-Was1:
-
-	.repeat 29
-        NOP
-        .repend
-
-	LDA	#0
-	CMP	_PIA_RTIM
-	BEQ	Was0
-Not0:
-	LDA	#_TIA_CO_BLUE + _TIA_LU_MAX
-        STA	_TIA_COLUBK
-Was0:
-
-	LDY	#191-16
+	LDY	#192
 Lines:
-	.repeat	7
-	LDA	_PIA_RTIM
-        ASL
-;	STA	_TIA_COLUBK
-        .repend
-
 	STA	_TIA_WSYNC
-	DEY
-	BNE	Lines
+	DEY			; +2 / 2
+	BNE	Lines		; taken: +3 / 5 DO NOT CROSS PAGE BOUNDARIES
+        			; not taken: +2 / 4
 
 ; -------------------------------
-; Active line 192
-	STA	_TIA_WSYNC
+; Technically beginning of Overscan line 1.
+; The overhead of JMP is not an issue since we have plenty of time
+; to turn off Vblank before the first pixels of the screen.
 
-; -------------------------------
-	JMP	Loop
+	JMP	MainLoop	; +3 / 7
 
 ; Reset / Start vectors
 	.org	$FFFC
