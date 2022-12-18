@@ -163,9 +163,17 @@ Vblank:
 ; Active lines 1-191
 	LDA	#0
 	STA	_TIA_VBLANK	; turn blank off
+	LDA	#12
+	STA	_PIA_ST1024T
 
 	LDY	#191
 Lines:
+	.repeat	7
+	LDA	_PIA_RTIM
+        ASL
+	STA	_TIA_COLUBK
+        .repend
+
 	STA	_TIA_WSYNC
 	DEY
 	BNE	Lines
