@@ -106,10 +106,10 @@ _PIA_DDR_A	.equ	$281
 _PIA_DATA_B	.equ	$282
 ;_PIA_DDR_B	.equ	$283
 
-_PIA_ST1T	.equ	$294
-_PIA_ST8T	.equ	$295
-_PIA_ST64T	.equ	$296
-_PIA_ST1024T	.equ	$297
+_PIA_WT1T	.equ	$294
+_PIA_WT8T	.equ	$295
+_PIA_WT64T	.equ	$296
+_PIA_WT1024T	.equ	$297
 
 _PIA_RTIM	.equ	$284
 
@@ -131,41 +131,97 @@ ClearZeroPage:
 Loop:
 ; -------------------------------
 ; Overscan - 30 lines total
-	LDA	#2
+	LDA	#2		; 3 clocks into overscan line 1 (JMP)
 	STA	_TIA_VBLANK	; turn blank on
-	LDY	#29
-Overscan:
-	STA	_TIA_WSYNC	; overscan line 1-29
-	DEY
-	BNE	Overscan
-	STA	_TIA_WSYNC	; overscan line 30
+
+; Skip 29 lines. 29 lines is 29*76 = 2204 CPU cycles, i.e. 34.43*64.
+; In other words, 35 ticks of 64T is 29 lines + 36 CPU cycles.
+; Initialize timer at 36, it'll spend 64 cycles each in 35, 35... 1.
+; When it reaches 0, we're into the 30th line.
+; Timer is set 14 cycles into the line, fires 36 cycles after the exact
+; position, plus 6 cycles of loop jitter, well within the 76 cycles
+; of a line.
+
+	LDA	#36
+        STA	_PIA_WT64T
+
+	LDA	#0
+TimOverscan:
+	CMP	_PIA_RTIM
+	BNE	TimOverscan
+
+	STA	_TIA_WSYNC	; end of overscan line 30
 
 ; -------------------------------
 ; Vsync - 3 lines
 	LDA	#2
 	STA	_TIA_VSYNC	; turn sync on
-	STA	_TIA_WSYNC	; vsync line 1
-	STA	_TIA_WSYNC	; vsync line 2
-	STA	_TIA_WSYNC	; vsync line 3
+	STA	_TIA_WSYNC	; end of vsync line 1
+	STA	_TIA_WSYNC	; end of vsync line 2
+	STA	_TIA_WSYNC	; end of vsync line 3
 
 ; -------------------------------
 ; Vblank - 37 lines total
 	LDA	#0
 	STA	_TIA_VSYNC	; turn sync off
-	LDY	#36
-Vblank:
-	STA	_TIA_WSYNC	; vblank line 1-36
-	DEY
-	BNE	Vblank
+
+; Skip 36 lines. 36 lines is 36*76 = 2736 CPU cycles, i.e. 42.75*64.
+; In other words, 43 ticks of 64T is 36 lines + 16 CPU cycles.
+; Initialize timer at 44, it'll spend 64 cycles each in 43, 42... 1.
+; When it reaches 0, we're into the 37th line.
+; Timer is set 11 cycles into the line, fires 16 cycles after the exact
+; position, plus 6 cycles of loop jitter, well within the 76 cycles
+; of a line.
+
+	LDA	#44
+        STA	_PIA_WT64T
+
+	LDA	#0
+TimVblank:
+	CMP	_PIA_RTIM
+	BNE	TimVblank
+
 	STA	_TIA_WSYNC	; vblank line 37
 
 ; -------------------------------
 ; Active lines 1-191
 	LDA	#0
 	STA	_TIA_VBLANK	; turn blank off
+	LDA	#20
+	STA	_PIA_WT64T
 
-	LDY	#191
+	.repeat 16
+	STA	_TIA_WSYNC
+	.repend
+
+	LDA	#1
+	CMP	_PIA_RTIM
+	BEQ	Was1
+Not1:
+	LDA	#_TIA_CO_PINK + _TIA_LU_MAX
+        STA	_TIA_COLUBK
+Was1:
+
+	.repeat 29
+        NOP
+        .repend
+
+	LDA	#0
+	CMP	_PIA_RTIM
+	BEQ	Was0
+Not0:
+	LDA	#_TIA_CO_BLUE + _TIA_LU_MAX
+        STA	_TIA_COLUBK
+Was0:
+
+	LDY	#191-16
 Lines:
+	.repeat	7
+	LDA	_PIA_RTIM
+        ASL
+;	STA	_TIA_COLUBK
+        .repend
+
 	STA	_TIA_WSYNC
 	DEY
 	BNE	Lines
