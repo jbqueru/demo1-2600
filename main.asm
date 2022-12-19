@@ -182,7 +182,7 @@ TimVblank:
 	BNE	TimVblank
 
 	STA	_TIA_WSYNC	; end vblank line 37
-        			; +? / 0
+				; +? / 0
 
 ; -------------------------------
 ; Active lines 1-192
@@ -191,7 +191,8 @@ TimVblank:
 
 	LDY	#192
 Lines:
-	STA	_TIA_WSYNC
+	STA	_TIA_WSYNC	; ? / 0
+
 	DEY			; +2 / 2
 	BNE	Lines		; taken: +3 / 5 DO NOT CROSS PAGE BOUNDARIES
         			; not taken: +2 / 4
