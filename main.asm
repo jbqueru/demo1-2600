@@ -113,6 +113,8 @@ _PIA_WT1024T	.equ	$297
 
 _PIA_RTIM	.equ	$284
 
+_ZP_LINE_COUNT	.equ	$80
+
 	.org	$F000,$EA
 Main:
 ; Set up CPU
@@ -130,79 +132,172 @@ ClearZeroPage:
 
 MainLoop:
 ; -------------------------------
-; Overscan - 30 lines total
-	LDA	#2		; +2 / 9
-	STA	_TIA_VBLANK	; +3 / 12 - turn blank on
+; Overscan - 17 lines total
+	LDA	#2		; +2 / 12
+	STA	_TIA_VBLANK	; +3 / 15 - turn blank on
 
-; Skip 29 lines. 29 lines is 29*76 = 2204 CPU cycles, i.e. 34.43*64.
-; In other words, 35 ticks of 64T is 29 lines + 36 CPU cycles.
-; Initialize timer at 36, it'll spend 64 cycles each in 35, 35... 1.
-; When it reaches 0, we're into the 30th line.
-; Timer is set 14 cycles into the line, fires 36 cycles after the exact
-; position, plus 6 cycles of loop jitter, well within the 76 cycles
-; of a line.
+; Skip 16 lines. 16 lines is 16*76 = 1216 CPU cycles, i.e. 19*64.
+; In other words, 19 ticks of 64T is 16 lines.
+; Initialize timer at 20, it'll spend 64 cycles each in 19, 18... 1.
+; When it reaches 0, we're into the 17th line.
+; Timer is set 21 cycles into the line, plus 6 cycles of loop jitter,
+; well within the 73 cycles before WSYNC.
 
-	LDA	#36
-        STA	_PIA_WT64T
+	LDA	#19		; +2 / 17
+	STA	_PIA_WT64T	; +4 / 21
 
 	LDA	#0
 TimOverscan:
 	CMP	_PIA_RTIM
 	BNE	TimOverscan
 
-	STA	_TIA_WSYNC	; end of overscan line 30
+	STA	_TIA_WSYNC	; end of overscan line 16
 
 ; -------------------------------
 ; Vsync - 3 lines
 	LDA	#2
 	STA	_TIA_VSYNC	; turn sync on
-	STA	_TIA_WSYNC	; end of vsync line 1
-	STA	_TIA_WSYNC	; end of vsync line 2
-	STA	_TIA_WSYNC	; end of vsync line 3
+	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 0
+	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 1
+	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 2
 
 ; -------------------------------
-; Vblank - 37 lines total
-	LDA	#0
-	STA	_TIA_VSYNC	; turn sync off
+; Vblank - 30 lines total
+	LDA	#0		; +2 / 2
+	STA	_TIA_VSYNC	; +3 / 5 - turn sync off
 
-; Skip 36 lines. 36 lines is 36*76 = 2736 CPU cycles, i.e. 42.75*64.
-; In other words, 43 ticks of 64T is 36 lines + 16 CPU cycles.
-; Initialize timer at 44, it'll spend 64 cycles each in 43, 42... 1.
-; When it reaches 0, we're into the 37th line.
-; Timer is set 11 cycles into the line, fires 16 cycles after the exact
-; position, plus 6 cycles of loop jitter, well within the 76 cycles
-; of a line.
+; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
+; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
+; Initialize timer at 35, it'll spend 64 cycles each in 34, 33... 1.
+; When it reaches 0, we're into the 29th line.
+; Timer is set 11 cycles into the line, fires 48 cycles after the exact
+; position, plus 6 cycles of loop jitter, within the 73 cycles
+; before WSYNC.
 
-	LDA	#44
-        STA	_PIA_WT64T
+	LDA	#35		; +2 / 7 - load timer value
+	STA	_PIA_WT64T	; +4 / 11 - and set it into the PIA
 
 	LDA	#0
 TimVblank:
 	CMP	_PIA_RTIM
 	BNE	TimVblank
 
-	STA	_TIA_WSYNC	; end vblank line 37
-				; +? / 0
+	STA	_TIA_WSYNC	; ? / 76 ; end vblank line 35
+
+	; Start 71-clock delay
+	LDX	#14		; +2 / 2
+	DEX			; 14*2 = +28
+	BNE	*-1		; 13*3 + 2 = +41 / 71
+	; End 71-clock delay
+
+	NOP			; +2 / 73
+	STX	_TIA_VBLANK	; +3 / 76 - turn blank off
+
+	; exact sync		; end vblank line 36
+
+	LDA	#$0		; +2 / 2
+	STA	_TIA_GRP0	; +3 / 5
+	LDA	#$0		; +2 / 7
+	STA	_TIA_GRP1	; +3 / 10
+	LDA	#$6E		; +2 / 12
+	STA	_TIA_COLUP0	; +3 / 15
+	LDA	#$7E		; +2 / 17
+	STA	_TIA_COLUP1	; +3 / 20
+	LDA	#3		; +2 / 22
+	STA	_TIA_NUSIZ0	; +3 / 25
+	LDA	#1		; +2 / 27
+	STA	_TIA_NUSIZ1	; +3 / 30
+
+	NOP			; +2 / 32
+	NOP			; +2 / 34
+	NOP			; +2 / 36
+	NOP			; +2 / 38
+	NOP			; +2 / 40
+
+	NOP			; +2 / 42
+	NOP			; +2 / 44
+	NOP			; +2 / 46
+	NOP			; +2 / 48
+	NOP			; +2 / 50
+
+	NOP			; +2 / 52
+	NOP			; +2 / 54
+	STA	_TIA_RESP0	; +3 / 57 / COL 171 / SPR 108
+	STA	_TIA_RESP1	; +3 / 60 / COL 180 / SPR 117
+
+	LDA	#$10
+	STA	_TIA_HMP1
+	STA	_TIA_WSYNC	; ? / 76 - end active line 0
+
+
+
+	STA	_TIA_HMOVE
+	.repeat	12
+	NOP
+	.repend
+	STA	_TIA_HMCLR
+	STA	_TIA_WSYNC	; ? / 76 - end active line 1
+
+
+	LDA	#$81		; +2 / 2
+	STA	_TIA_GRP0	; +3 / 5
+	LDA	#$7E
+	STA	_TIA_GRP1	; / 10
+	LDA	#$99		; / 12
+	LDX	#$66		; / 14
+	LDY	#$BD		; / 16
+
+	PHP
+	PLP			; / 23
+	PHP
+	PLP			; / 30
+	PHP
+	PLP			; / 37
+	PHP
+	PLP			; / 44
+	PHP
+	PLP			; / 51
+
+	NOP
+	NOP
+	NOP
+	NOP			; / 59
+
+	STA	_TIA_GRP0	; / 62
+	STX	_TIA_GRP1	; / 65
+	STY	_TIA_GRP0	; / 68
+
+	STA	_TIA_WSYNC	; ? / 76 - end active line 2
+
 
 ; -------------------------------
-; Active lines 1-192
-	LDA	#0		; +2 / 2
-	STA	_TIA_VBLANK	; +3 / 5 - turn blank off
+; Active lines 3-211
 
-	LDY	#192
+	LDY	#209		; +2 / 2
+	STY	_ZP_LINE_COUNT	; +3 / 5
+	STY	_ZP_LINE_COUNT	; +3 / 8 - extra to align line 0 with subsequent
 Lines:
-	STA	_TIA_WSYNC	; ? / 0
+	LDA	#$AA		; +2 / 2
+	LDX	#$AA		; +2 / 4
+	LDY	#$AA		; +2 / 6
+	STA	_TIA_PF0
+	STX	_TIA_PF1
+	STY	_TIA_PF2
+	LDY	#$A4
+	STY	_TIA_COLUBK
 
-	DEY			; +2 / 2
-	BNE	Lines		; taken: +3 / 5 DO NOT CROSS PAGE BOUNDARIES
-        			; not taken: +2 / 4
+	STA	_TIA_WSYNC	; ? / 76 - end of line 8*n + 7
+
+	DEC	_ZP_LINE_COUNT	; +5 / 5
+	BNE	Lines		; taken: +3 / 8 DO NOT CROSS PAGE BOUNDARIES
+				; not taken: +2 / 7
 
 ; -------------------------------
 ; Technically beginning of Overscan line 1.
 ; The overhead of JMP is not an issue since we have plenty of time
 ; to turn off Vblank before the first pixels of the screen.
 
-	JMP	MainLoop	; +3 / 7
+	JMP	MainLoop	; +3 / 10
 
 ; Reset / Start vectors
 	.org	$FFFC
