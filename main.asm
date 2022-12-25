@@ -261,8 +261,10 @@ TimVblank:
 
 	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
 
+Line7To183:
 	STA	_TIA_WSYNC	; +3/(75..76)
 ; End vblank line 29
+; Also end active line 7, 15, [+8], 183
 
 
 
@@ -270,20 +272,19 @@ TimVblank:
 ; Active area - 212 lines total
 
 ; Active lines 0-191
-	LDY	#24		; +2 / 2
-	STY	_ZP_LINE_COUNT	; +3 / 5
-	STY	_ZP_LINE_COUNT	; +3 / 8 - extra to align line 0 with subsequent
 Lines:
-	LDY	#$A4
-	STY	_TIA_COLUPF
+	LDY	#$A4		; +2/2
+	STY	_TIA_COLUPF	; +3/5
 
-	.repeat	8
-	STA	_TIA_WSYNC	; ? / 76 - end of line 8*n + 7
+	.repeat	7
+	STA	_TIA_WSYNC	; +3/(8..76) - end of line 8*n
+        			; +3/(3..76) - end of line 8*n + 1..6
         .repend
+	DEC	_ZP_LINE_COUNT	; +5/5
+	BNE	Line7To183	; taken: +3/8 + page boundary
+				; not taken: +2/7
+	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
 
-	DEC	_ZP_LINE_COUNT	; +5 / 5
-	BNE	Lines		; taken: +3 / 8 DO NOT CROSS PAGE BOUNDARIES
-				; not taken: +2 / 7
 
 ; 40-pixel sprite for signature
 ;
@@ -294,10 +295,12 @@ Lines:
 ; Write 2: PIX 124 to 131 = COL 192 to 199 = CPU 64 to 66
 ; Write 3: PIX 132 to 139 = COL 200 to 207 = CPU 67 to 69
 
-; Active line 192
+; Start active line 192
+
+	PHP
+        PLP
+
 ; Set things up for signature
-
-
 ; Set all colors to be the same - everything is invisible
 	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2 / 9
 	STA	_TIA_COLUBK	; +3 / 12
@@ -325,7 +328,8 @@ Lines:
 ; Move sprite 1 pixel to the left (+1 clock)
 	LDA	#$10		; +2 / 62
 	STA	_TIA_HMP1	; +3 / 65
-	STA	_TIA_WSYNC	; ? / 76 - end active line 192
+	STA	_TIA_WSYNC	; ? / 76
+; End active line 192
 
 ; Active line 193
 	STA	_TIA_HMOVE	; +3 / 3
@@ -353,10 +357,14 @@ Lines:
 	STA	_TIA_VDELP0	; +3 / 35
 	STA	_TIA_VDELP1	; +3 / 38
 
-	STA	_TIA_WSYNC	; ? / 76 - end active line 193
+	STA	_TIA_WSYNC	; ? / 76
+; End active line 193
 
-; Active line 194
+; Start Active line 194
 	LDY	#13		; +2/2
+        JMP	Line195To207	; +3/5
+
+	.org	$F100
 Line195To207:
 	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
         			; +3/76 - end active line 195-207
