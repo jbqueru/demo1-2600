@@ -281,11 +281,34 @@ Lines:
 	STA	_TIA_PF1	; +3 / 5
 	STA	_TIA_PF2	; +3 / 8
 
-; update PF1 between 37 and 53
-; update PF2 between 48 and 64
+	PHP
+	PLP			; / 15
+	PHP
+	PLP			; / 22
+        NOP
+        NOP
+        NOP
+        NOP
+        NOP			; / 32
+	LDA	#$E0		; / 34
+
+
+
+	STA	_TIA_PF1	; / 37 - COL 111 - PIX 43
+	STA	_TIA_PF1	; / 40 - 3-cycle NOP
+	NOP			; / 42
+	STA	_TIA_PF2	; / 45 - COL 135 - PIX 67
+; update PF1 between 37 and 53 (theo) / 57 (actual)
+; update PF2 between 48 (theo) / 45 (actual) and 64
+; difference between theo and actual is because top 3 bits
+; are identical between $FF and $E0, so we can change while
+; those bits are getting displayed
 
 	STA	_TIA_WSYNC	; end active line 195-208
 	.repend
+	LDA	#$FF		; +2 / 2
+	STA	_TIA_PF1	; +3 / 5
+	STA	_TIA_PF2	; +3 / 8
 	STA	_TIA_WSYNC	; end active line 209
 	STA	_TIA_WSYNC	; end active line 210
 	STA	_TIA_WSYNC	; end active line 211
