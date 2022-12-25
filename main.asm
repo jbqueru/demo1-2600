@@ -225,7 +225,7 @@ Lines:
 ; Set things up for signature
 
 ; Set all colors to be the same - everything is invisible
-	LDA	#_TIA_CO_ORANGE + _TIA_LU_V_DARK	; +2 / 9
+	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2 / 9
 	STA	_TIA_COLUBK	; +3 / 12
 	STA	_TIA_COLUPF	; +3 / 15
 	STA	_TIA_COLUP0	; +3 / 18
