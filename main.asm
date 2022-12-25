@@ -142,7 +142,7 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
-MainLoop:
+MainLoop:			; +3/3 from the JMP that gets here
 ; -------------------------------
 ; Overscan - 17 lines total
 
