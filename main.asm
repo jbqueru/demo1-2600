@@ -480,96 +480,98 @@ Rts12:	RTS
 ;	.align	$100,0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
-; ........ ........ ........ ........ ........
-; .xxxx... .x...x.. x...x.xx xx..xxxx x.xxxxx.
-; .x...x.. .x..x.x. .x.x..x. ..x.x... ..x.....
-; .x...x.. .x.x...x ..x...xx xx..xxx. ..xxx...
-; .x...x.. .x.xxxxx ..x...x. ..x.x... ..x.....
-; .xxxx... .x.x...x ..x...xx xx..xxxx x.xxxxx.
-; ......xx x....... ........ ........ ........
+
+; xxxxxxxx xxxxxxx. ...x.x.x ....xxxx xxxxxxxx
+; xxx.x... xxx..xx. ...x.x.x ....x.xx x.x...xx
+; xxx.x.xx .x.xx.x. ...x.x.x ....x..x ..x.xx.x
+; xxx.x... xx.xx.x. ...x.x.x ....x.x. x.x...xx
+; xxx.x.xx .x.xx.x. ...x.x.x ....x.xx x.x.xx.x
+; x..xx... xxx...x. ..x..x.. x...x.xx x.x...xx
+; xxxxxxxx xxxxxxx. xx...x.. .xx.xxxx xxxxxxxx
+
 
 Logo1:
-	.byte	%00000011
-	.byte	%00000011
-	.byte	%01111000
-	.byte	%01111000
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%01111000
-	.byte	%01111000
-	.byte	%00000000
-	.byte	%00000000
+	.byte	%11111111
+	.byte	%11111111
+	.byte	%10011000
+	.byte	%10001000
+	.byte	%11101011
+	.byte	%11101011
+	.byte	%11101000
+	.byte	%11101000
+	.byte	%11101011
+	.byte	%11101011
+	.byte	%11101000
+	.byte	%11101000
+	.byte	%11111111
+	.byte	%11111111
 
 Logo2:
-	.byte	%10000000
-	.byte	%10000000
-	.byte	%01010001
-	.byte	%01010001
-	.byte	%01011111
-	.byte	%01011111
-	.byte	%01010001
-	.byte	%01010001
-	.byte	%01001010
-	.byte	%01001010
-	.byte	%01000100
-	.byte	%01000100
-	.byte	%00000000
-	.byte	%00000000
+	.byte	%11111110
+	.byte	%11111110
+	.byte	%11100010
+	.byte	%01000010
+	.byte	%01010010
+	.byte	%01011010
+	.byte	%11011010
+	.byte	%11011010
+	.byte	%01011010
+	.byte	%01011010
+	.byte	%01000010
+	.byte	%11100110
+	.byte	%11111110
+	.byte	%11111110
 
 Logo3:
-	.byte	%00000000
-	.byte	%00000000
-	.byte	%00100011
-	.byte	%00100011
-	.byte	%00100010
-	.byte	%00100010
-	.byte	%00100011
-	.byte	%00100011
-	.byte	%01010010
-	.byte	%01010010
-	.byte	%10001011
-	.byte	%10001011
-	.byte	%00000000
-	.byte	%00000000
+	.byte	%10000100
+	.byte	%11000100
+	.byte	%11100100
+	.byte	%01100100
+	.byte	%00110101
+	.byte	%00110101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
+	.byte	%00010101
 
 Logo4:
-	.byte	%00000000
-	.byte	%00000000
-	.byte	%11001111
-	.byte	%11001111
-	.byte	%00101000
-	.byte	%00101000
-	.byte	%11001110
-	.byte	%11001110
-	.byte	%00101000
-	.byte	%00101000
-	.byte	%11001111
-	.byte	%11001111
-	.byte	%00000000
-	.byte	%00000000
+	.byte	%00101111
+	.byte	%01101111
+	.byte	%11101011
+	.byte	%11001011
+	.byte	%10001011
+	.byte	%10001011
+	.byte	%00001011
+	.byte	%00001010
+	.byte	%00001000
+	.byte	%00001001
+	.byte	%00001011
+	.byte	%00001011
+	.byte	%00001111
+	.byte	%00001111
 
 Logo5:
-	.byte	%00000000
-	.byte	%00000000
-	.byte	%10111110
-	.byte	%10111110
-	.byte	%00100000
-	.byte	%00100000
-	.byte	%00111000
-	.byte	%00111000
-	.byte	%00100000
-	.byte	%00100000
-	.byte	%10111110
-	.byte	%10111110
-	.byte	%00000000
-	.byte	%00000000
+	.byte	%11111111
+	.byte	%11111111
+	.byte	%10100011
+	.byte	%10100001
+	.byte	%10101101
+	.byte	%10101101
+	.byte	%10100011
+	.byte	%10100011
+	.byte	%00101101
+	.byte	%00101101
+	.byte	%10100001
+	.byte	%10100011
+	.byte	%11111111
+	.byte	%11111111
 
 Colors1:
-	.byte	0,2,4,8,10,12,14,14,12,10,8,4,2,0
+	.byte	$10,$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12,$10
 
 ; Reset / Start vectors
 	.org	$FFFC
