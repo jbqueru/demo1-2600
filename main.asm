@@ -123,6 +123,8 @@ _PIA_RTIM	.equ	$284
 ; Zero-page layout
 
 _ZP_LINE_COUNT	.equ	$80
+_ZP_SIGPAL_LO	.equ	$81
+_ZP_SIGPAL_HI	.equ	$82
 
 ; -------------------------------
 ; Code start
@@ -141,6 +143,11 @@ ClearZeroPage:
 	STA	0,X
 	INX
 	BNE	ClearZeroPage
+
+	LDA	#Colors1 & $FF
+        STA	_ZP_SIGPAL_LO
+	LDA	#Colors1 >> 8
+        STA	_ZP_SIGPAL_HI
 
 MainLoop:			; +3/3 from the JMP that gets here
 ; -------------------------------
@@ -398,44 +405,45 @@ Lines:
 	LDY	#13		; +2/2
         JMP	Line195To207	; +3/5
 
-	.org	$F100
+	.align	$100,$EA	; $EA is NOP
 Line195To207:
 	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
         			; +3/76 - end active line 195-207
 
 ; Active lines 195-208
-	LDA	#$FF		; +2/2
-	STA	_TIA_PF1	; +3/5 COL=15 PIX=-53
-	STA	_TIA_PF2	; +3/8 COL=24 PIX=-44
+; Set raster palette for signature bar
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+        STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 
-	LDA	Logo1,Y		; +4/12
-        STA	_TIA_GRP0	; +3/15 COL=45 PIX=-23 - oP0=X nP0=1 oP1=X nP1=X
-	LDA	Logo2,Y		; +4/19
-        STA	_TIA_GRP1	; +3/22 COL=66 PIX=-2 - oP0=1 nP0=1 oP1=X nP1=2
-	LDA	Logo3,Y		; +4/26
-        STA	_TIA_GRP0	; +3/29 COL=87 PIX=19 - oP0=1 nP0=3 oP1=2 nP1=2
+; Reset playfield, filled
+	LDA	#$FF		; +2/10
+	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
+	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 
-	LDX	Logo4,Y		; +4/33
-	NOP			; +2/35
-        NOP			; +2/37
+	LDA	Logo1,Y		; +4/20
+	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1 - oP0=X nP0=1 oP1=X nP1=X
+	LDA	Logo2,Y		; +4/27
+	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22 - oP0=1 nP0=1 oP1=X nP1=2
+	LDA	Logo3,Y		; +4/34
+	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43 - oP0=1 nP0=3 oP1=2 nP1=2
 
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
-; update PF2 between 48 (theo) / 45 (actual) and 64
+; update PF2 between 48 (theo) / 47 (actual) and 64
 ; PF2 works at 44 on my emulator, but there seem to be
 ; some 2600 implementations (Jr?) that are off by 1 pixel.
 ; Difference between theo and actual is because top 3 bits
 ; are identical between $FF and $E0, so we can change while
 ; those bits are getting displayed
-	LDA	#$E0		; +2/39
+	LDA	#$F8		; +2/39
 	STA	_TIA_PF1	; +3/42 COL=111 PIX=43
-	STA	_TIA_PF2	; +3/45 COL=135 PIX=67
+	LDA	#$80		; +2/44
+	STA	_TIA_PF2	; +3/47 COL=135 PIX=67
 
-	LDA	Logo5,Y		; +4/49
+	LDX	Logo4,Y		; +4/51
+	LDA	Logo5,Y		; +4/55
 
-	; 10-cycle NOP
-	PHP			; +3/52
-	BIT	0		; +3/55
-	PLP			; +4/59
+	NOP
+	NOP
 
 	STX	_TIA_GRP1	; +3/62 COL=186 PIX=118 - oP0=3 nP0=3 oP1=2 nP1=4
 	STA	_TIA_GRP0	; +3/65 COL=195 PIX=127 - oP0=3 nP0=5 oP1=4 nP1=4
@@ -453,9 +461,9 @@ Line195To207:
 	STA	_TIA_PF2	; +3/8
 ; Clean up sprites
 	LDA	#$0		; +2/10
-        STA	_TIA_GRP0	; +3/13
-        STA	_TIA_GRP1	; +3/16
-        STA	_TIA_GRP0	; +3/19
+	STA	_TIA_GRP0	; +3/13
+	STA	_TIA_GRP1	; +3/16
+	STA	_TIA_GRP0	; +3/19
 	STA	_TIA_WSYNC	; +3/(22..76) - end active line 209
 
 	STA	_TIA_WSYNC	; +3/(3..76) end active line 210
@@ -472,7 +480,7 @@ Line195To207:
 ; A naked RTS, allowing for a 12-clock delay with a JSR here
 Rts12:	RTS
 
-;	.org	$F100
+;	.align	$100,0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
 ; ........ ........ ........ ........ ........
@@ -562,6 +570,9 @@ Logo5:
 	.byte	%10111110
 	.byte	%00000000
 	.byte	%00000000
+
+Colors1:
+	.byte	0,2,4,8,10,12,14,14,12,10,8,4,2,0
 
 ; Reset / Start vectors
 	.org	$FFFC
