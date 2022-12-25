@@ -195,85 +195,13 @@ TimVblank:
 
 	; exact sync		; end vblank line 36
 
-	LDA	#$0		; +2 / 2
-	STA	_TIA_GRP0	; +3 / 5
-	LDA	#$0		; +2 / 7
-	STA	_TIA_GRP1	; +3 / 10
-	LDA	#$6E		; +2 / 12
-	STA	_TIA_COLUP0	; +3 / 15
-	LDA	#$7E		; +2 / 17
-	STA	_TIA_COLUP1	; +3 / 20
-	LDA	#3		; +2 / 22
-	STA	_TIA_NUSIZ0	; +3 / 25
-	LDA	#1		; +2 / 27
-	STA	_TIA_NUSIZ1	; +3 / 30
-
-	NOP			; +2 / 32
-	NOP			; +2 / 34
-	NOP			; +2 / 36
-	NOP			; +2 / 38
-	NOP			; +2 / 40
-
-	NOP			; +2 / 42
-	NOP			; +2 / 44
-	NOP			; +2 / 46
-	NOP			; +2 / 48
-	NOP			; +2 / 50
-
-	NOP			; +2 / 52
-	NOP			; +2 / 54
-	STA	_TIA_RESP0	; +3 / 57 / COL 171 / SPR 108
-	STA	_TIA_RESP1	; +3 / 60 / COL 180 / SPR 117
-
-	LDA	#$10
-	STA	_TIA_HMP1
-	STA	_TIA_WSYNC	; ? / 76 - end active line 0
-
-
-
-	STA	_TIA_HMOVE
-	.repeat	12
-	NOP
-	.repend
-	STA	_TIA_HMCLR
-	STA	_TIA_WSYNC	; ? / 76 - end active line 1
-
-
-	LDA	#$81		; +2 / 2
-	STA	_TIA_GRP0	; +3 / 5
-	LDA	#$7E
-	STA	_TIA_GRP1	; / 10
-	LDA	#$99		; / 12
-	LDX	#$66		; / 14
-	LDY	#$BD		; / 16
-
-	PHP
-	PLP			; / 23
-	PHP
-	PLP			; / 30
-	PHP
-	PLP			; / 37
-	PHP
-	PLP			; / 44
-	PHP
-	PLP			; / 51
-
-	NOP
-	NOP
-	NOP
-	NOP			; / 59
-
-	STA	_TIA_GRP0	; / 62
-	STX	_TIA_GRP1	; / 65
-	STY	_TIA_GRP0	; / 68
-
-	STA	_TIA_WSYNC	; ? / 76 - end active line 2
 
 
 ; -------------------------------
-; Active lines 3-211
+; Active area - 212 lines total
 
-	LDY	#209		; +2 / 2
+; Active lines 0-191
+	LDY	#192		; +2 / 2
 	STY	_ZP_LINE_COUNT	; +3 / 5
 	STY	_ZP_LINE_COUNT	; +3 / 8 - extra to align line 0 with subsequent
 Lines:
@@ -284,13 +212,83 @@ Lines:
 	STX	_TIA_PF1
 	STY	_TIA_PF2
 	LDY	#$A4
-	STY	_TIA_COLUBK
+	STY	_TIA_COLUPF
 
 	STA	_TIA_WSYNC	; ? / 76 - end of line 8*n + 7
 
 	DEC	_ZP_LINE_COUNT	; +5 / 5
 	BNE	Lines		; taken: +3 / 8 DO NOT CROSS PAGE BOUNDARIES
 				; not taken: +2 / 7
+
+
+; Active line 192
+; Set things up for signature
+
+; Set all colors to be the same - everything is invisible
+	LDA	#_TIA_CO_ORANGE + _TIA_LU_V_DARK	; +2 / 9
+	STA	_TIA_COLUBK	; +3 / 12
+	STA	_TIA_COLUPF	; +3 / 15
+	STA	_TIA_COLUP0	; +3 / 18
+	STA	_TIA_COLUP1	; +3 / 21 / COL 63 / PIX -5 - early enough!
+
+; Sprite repeat setup
+	LDA	#$3		; +2 / 23
+	STA	_TIA_NUSIZ0	; +3 / 26
+	LSR			; +2 / 28 - A contains 1
+	STA	_TIA_NUSIZ1	; +3 / 31
+; Disable all graphics
+	LSR			; +2 / 33 - A contains 0
+	STA	_TIA_GRP0	; +3 / 36
+	STA	_TIA_GRP1	; +3 / 39
+	STA	_TIA_ENAM0	; +3 / 42
+	STA	_TIA_ENAM1	; +3 / 45
+	STA	_TIA_ENABL	; +3 / 48
+; Sprite reflection off
+	STA	_TIA_REFP0	; +3 / 51
+	STA	_TIA_REFP1	; +3 / 54
+; Set approximate sprite position
+	STA	_TIA_RESP0	; +3 / 57 / COL 171 / SPR 108
+	STA	_TIA_RESP1	; +3 / 60 / COL 180 / SPR 117
+; Move sprite 1 pixel to the left (+1 clock)
+	LDA	#$10		; +2 / 62
+	STA	_TIA_HMP1	; +3 / 65
+	STA	_TIA_WSYNC	; ? / 76 - end active line 192
+
+; Active line 193
+	STA	_TIA_HMOVE	; +3 / 3
+
+	LDA	#$FF		; +2 / 5
+        STA	_TIA_PF0	; +3 / 8
+        STA	_TIA_PF1	; +3 / 11
+        STA	_TIA_PF2	; +3 / 14
+
+	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2 / 16
+        STA	_TIA_COLUBK	; +3 / 19
+	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2 / 21
+        STA	_TIA_COLUP0	; +3 / 24
+        STA	_TIA_COLUP1	; +3 / 27
+
+	STA	_TIA_HMCLR	; +3 / 30
+
+	STA	_TIA_WSYNC	; ? / 76 - end active line 193
+
+; Active line 194
+	STA	_TIA_WSYNC	; ? / 76 - end active line 194
+
+; Active lines 195-208
+	.repeat 14
+	LDA	#$FF		; +2 / 2
+	STA	_TIA_PF1	; +3 / 5
+	STA	_TIA_PF2	; +3 / 8
+
+; update PF1 between 37 and 53
+; update PF2 between 48 and 64
+
+	STA	_TIA_WSYNC	; end active line 195-208
+	.repend
+	STA	_TIA_WSYNC	; end active line 209
+	STA	_TIA_WSYNC	; end active line 210
+	STA	_TIA_WSYNC	; end active line 211
 
 ; -------------------------------
 ; Technically beginning of Overscan line 1.
