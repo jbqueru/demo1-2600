@@ -231,21 +231,20 @@ Lines:
 	STA	_TIA_COLUP0	; +3 / 18
 	STA	_TIA_COLUP1	; +3 / 21 / COL 63 / PIX -5 - early enough!
 
-; Sprite repeat setup
-	LDA	#$3		; +2 / 23
-	STA	_TIA_NUSIZ0	; +3 / 26
-	LSR			; +2 / 28 - A contains 1
-	STA	_TIA_NUSIZ1	; +3 / 31
 ; Disable all graphics
-	LSR			; +2 / 33 - A contains 0
-	STA	_TIA_GRP0	; +3 / 36
-	STA	_TIA_GRP1	; +3 / 39
-	STA	_TIA_ENAM0	; +3 / 42
-	STA	_TIA_ENAM1	; +3 / 45
-	STA	_TIA_ENABL	; +3 / 48
+	LDA	#$0		; +2 / 23
+	STA	_TIA_GRP0	; +3 / 26 - write iP0, copy iP1 to dP1
+	STA	_TIA_GRP1	; +3 / 29 - write iP1, copy iP0 to dP0
+	STA	_TIA_GRP0	; +3 / 32 - write iP0, copy iP1 to dP1
+	STA	_TIA_ENAM0	; +3 / 35
+	STA	_TIA_ENAM1	; +3 / 38
+	STA	_TIA_ENABL	; +3 / 41
 ; Sprite reflection off
-	STA	_TIA_REFP0	; +3 / 51
-	STA	_TIA_REFP1	; +3 / 54
+	STA	_TIA_REFP0	; +3 / 44
+	STA	_TIA_REFP1	; +3 / 47
+; Delay to sync
+	PHP			; +3 / 50
+	PLP			; +4 / 54
 ; Set approximate sprite position
 	STA	_TIA_RESP0	; +3 / 57 / COL 171 / SPR 108
 	STA	_TIA_RESP1	; +3 / 60 / COL 180 / SPR 117
@@ -263,52 +262,83 @@ Lines:
         STA	_TIA_PF2	; +3 / 14
 
 	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2 / 16
-        STA	_TIA_COLUBK	; +3 / 19
+	STA	_TIA_COLUBK	; +3 / 19
 	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2 / 21
-        STA	_TIA_COLUP0	; +3 / 24
-        STA	_TIA_COLUP1	; +3 / 27
+	STA	_TIA_COLUP0	; +3 / 24
+	STA	_TIA_COLUP1	; +3 / 27
 
 	STA	_TIA_HMCLR	; +3 / 30
+
+; Sprite repeat setup
+	LDA	#$3		; +2 / 23
+	STA	_TIA_NUSIZ0	; +3 / 26
+	LSR			; +2 / 28 - A contains 1
+	STA	_TIA_NUSIZ1	; +3 / 31
+
+	LDA	#$1		; +2 / 32
+	STA	_TIA_VDELP0	; +3 / 35
+	STA	_TIA_VDELP1	; +3 / 38
 
 	STA	_TIA_WSYNC	; ? / 76 - end active line 193
 
 ; Active line 194
+	LDY	#13
+Line195To207:
 	STA	_TIA_WSYNC	; ? / 76 - end active line 194
 
 ; Active lines 195-208
 	.repeat 14
-	LDA	#$FF		; +2 / 2
-	STA	_TIA_PF1	; +3 / 5
-	STA	_TIA_PF2	; +3 / 8
+	LDA	#$FF		; +2/2
+	STA	_TIA_PF1	; +3/5
+	STA	_TIA_PF2	; +3/8
 
-	PHP
-	PLP			; / 15
-	PHP
-	PLP			; / 22
-        NOP
-        NOP
-        NOP
-        NOP
-        NOP			; / 32
-	LDA	#$E0		; / 34
+	LDA	Logo1,Y		; +4/12
+        STA	_TIA_GRP0	; +3/15 - oP0=X nP0=1 oP1=X nP1=X
+	LDA	Logo2,Y		; +4/19
+        STA	_TIA_GRP1	; +3/22 - oP0=1 nP0=1 oP1=X nP1=2
+	LDA	Logo3,Y		; +4/26
+        STA	_TIA_GRP0	; +3/29 - oP0=1 nP0=3 oP1=2 nP1=2
 
+	LDX	Logo4,Y		; +4/33
+	NOP			; +2/35
+        NOP			; +2/37
 
-
-	STA	_TIA_PF1	; / 37 - COL 111 - PIX 43
-	STA	_TIA_PF1	; / 40 - 3-cycle NOP
-	NOP			; / 42
-	STA	_TIA_PF2	; / 45 - COL 135 - PIX 67
+	LDA	#$E0		; +2/39
+	STA	_TIA_PF1	; +3/42 COL=111 PIX=43
+	STA	_TIA_PF2	; +3/45 COL=135 PIX=67
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
 ; update PF2 between 48 (theo) / 45 (actual) and 64
-; difference between theo and actual is because top 3 bits
+; PF2 works at 44 on my emulator, but there seem to be
+; some 2600 implementations (Jr?) that are off by 1 pixel.
+; Difference between theo and actual is because top 3 bits
 ; are identical between $FF and $E0, so we can change while
 ; those bits are getting displayed
 
-	STA	_TIA_WSYNC	; end active line 195-208
+	LDA	Logo5,Y		; +4/49
+
+	; 10-cycle NOP
+	PHP			; +3/52
+        BIT	0		; +3/55
+        PLP			; +4/59
+
+	STX	_TIA_GRP1	; +3/62 COL=186 PIX=118 - oP0=3 nP0=3 oP1=2 nP1=4
+	STA	_TIA_GRP0	; +3/65 COL=195 PIX=127 - oP0=3 nP0=5 oP1=4 nP1=4
+	STY	_TIA_GRP1	; +3/68 COL=204 PIX=136 - oP0=5 nP0=5 oP1=4 nP1=X
+
+	DEY			; +2/70
+;        BPL	Line195To207	; Taken: +3/73
+	; 5 cycles
+
+	STA	_TIA_WSYNC	; ?8 / 76 - end active line 195-208
+
 	.repend
 	LDA	#$FF		; +2 / 2
 	STA	_TIA_PF1	; +3 / 5
 	STA	_TIA_PF2	; +3 / 8
+        LDA	#$0
+        STA	_TIA_GRP0
+        STA	_TIA_GRP1
+        STA	_TIA_GRP0
 	STA	_TIA_WSYNC	; end active line 209
 	STA	_TIA_WSYNC	; end active line 210
 	STA	_TIA_WSYNC	; end active line 211
@@ -319,6 +349,96 @@ Lines:
 ; to turn off Vblank before the first pixels of the screen.
 
 	JMP	MainLoop	; +3 / 10
+
+; Signature
+; MUST NO CROSS PAGE BOUNDARY
+; ........ ........ ........ ........ ........
+; .xxxx... .x...x.. x...x.xx xx..xxxx x.xxxxx.
+; .x...x.. .x..x.x. .x.x..x. ..x.x... ..x.....
+; .x...x.. .x.x...x ..x...xx xx..xxx. ..xxx...
+; .x...x.. .x.xxxxx ..x...x. ..x.x... ..x.....
+; .xxxx... .x.x...x ..x...xx xx..xxxx x.xxxxx.
+; ......xx x....... ........ ........ ........
+
+Logo1:
+	.byte	%00000011
+	.byte	%00000011
+	.byte	%01111000
+	.byte	%01111000
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%01111000
+	.byte	%01111000
+	.byte	%00000000
+	.byte	%00000000
+
+Logo2:
+	.byte	%10000000
+	.byte	%10000000
+	.byte	%01010001
+	.byte	%01010001
+	.byte	%01011111
+	.byte	%01011111
+	.byte	%01010001
+	.byte	%01010001
+	.byte	%01001010
+	.byte	%01001010
+	.byte	%01000100
+	.byte	%01000100
+	.byte	%00000000
+	.byte	%00000000
+
+Logo3:
+	.byte	%00000000
+	.byte	%00000000
+	.byte	%00100011
+	.byte	%00100011
+	.byte	%00100010
+	.byte	%00100010
+	.byte	%00100011
+	.byte	%00100011
+	.byte	%01010010
+	.byte	%01010010
+	.byte	%10001011
+	.byte	%10001011
+	.byte	%00000000
+	.byte	%00000000
+
+Logo4:
+	.byte	%00000000
+	.byte	%00000000
+	.byte	%11001111
+	.byte	%11001111
+	.byte	%00101000
+	.byte	%00101000
+	.byte	%11001110
+	.byte	%11001110
+	.byte	%00101000
+	.byte	%00101000
+	.byte	%11001111
+	.byte	%11001111
+	.byte	%00000000
+	.byte	%00000000
+
+Logo5:
+	.byte	%00000000
+	.byte	%00000000
+	.byte	%10111110
+	.byte	%10111110
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%00111000
+	.byte	%00111000
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%10111110
+	.byte	%10111110
+	.byte	%00000000
+	.byte	%00000000
 
 ; Reset / Start vectors
 	.org	$FFFC
