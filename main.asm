@@ -145,9 +145,9 @@ ClearZeroPage:
 	BNE	ClearZeroPage
 
 	LDA	#Colors1 & $FF
-        STA	_ZP_SIGPAL_LO
+	STA	_ZP_SIGPAL_LO
 	LDA	#Colors1 >> 8
-        STA	_ZP_SIGPAL_HI
+	STA	_ZP_SIGPAL_HI
 
 MainLoop:			; +3/3 from the JMP that gets here
 ; -------------------------------
@@ -260,7 +260,7 @@ TimVblank:
 
 	STA	_TIA_NUSIZ0	; +3/45
 	STA	_TIA_NUSIZ1	; +3/48
-        NOP			; +2/50
+	NOP			; +2/50
 
 	; Interleave set M0 position
 	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
@@ -297,8 +297,8 @@ Lines:
 
 	.repeat	7
 	STA	_TIA_WSYNC	; +3/(8..76) - end of line 8*n
-        			; +3/(3..76) - end of line 8*n + 1..6
-        .repend
+				; +3/(3..76) - end of line 8*n + 1..6
+	.repend
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BNE	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
@@ -366,16 +366,16 @@ Lines:
 
 ; Trigger HMOVE on clock 74 (magic trick)
 	STA	_TIA_HMOVE	; +3/74
-        NOP			; +2/76
+	NOP			; +2/76
 ; No WSYNC, perfect sync
 ; End active line 192
 
 ; Start Active line 193
 ; Set a solid playfield
 	LDA	#$FF		; +2/2
-        STA	_TIA_PF0	; +3/5
-        STA	_TIA_PF1	; +3/8
-        STA	_TIA_PF2	; +3/11
+	STA	_TIA_PF0	; +3/5
+	STA	_TIA_PF1	; +3/8
+	STA	_TIA_PF2	; +3/11
 
 ; Set palette for background and players
 	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/13
@@ -400,7 +400,7 @@ Lines:
 
 ; Start Active line 194
 	LDY	#13		; +2/2
-        JMP	Line195To207	; +3/5
+	JMP	Line195To207	; +3/5
 
 	.align	$100,$EA	; $EA is NOP
 Line195To207:
@@ -410,7 +410,7 @@ Line195To207:
 ; Active lines 195-208
 ; Set raster palette for signature bar
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
-        STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 
 ; Reset playfield, filled
 	LDA	#$FF		; +2/10
