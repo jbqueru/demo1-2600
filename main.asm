@@ -297,67 +297,73 @@ Lines:
 
 ; Start active line 192
 
-	PHP
-        PLP
-
 ; Set things up for signature
 ; Set all colors to be the same - everything is invisible
-	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2 / 9
-	STA	_TIA_COLUBK	; +3 / 12
-	STA	_TIA_COLUPF	; +3 / 15
-	STA	_TIA_COLUP0	; +3 / 18
-	STA	_TIA_COLUP1	; +3 / 21 / COL 63 / PIX -5 - early enough!
+	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2/2
+	STA	_TIA_COLUBK	; +3/5
+	STA	_TIA_COLUPF	; +3/8
+	STA	_TIA_COLUP0	; +3/11
+	STA	_TIA_COLUP1	; +3/14 COL=42 early enough!
 
 ; Disable all graphics
-	LDA	#$0		; +2 / 23
-	STA	_TIA_GRP0	; +3 / 26 - write iP0, copy iP1 to dP1
-	STA	_TIA_GRP1	; +3 / 29 - write iP1, copy iP0 to dP0
-	STA	_TIA_GRP0	; +3 / 32 - write iP0, copy iP1 to dP1
-	STA	_TIA_ENAM0	; +3 / 35
-	STA	_TIA_ENAM1	; +3 / 38
-	STA	_TIA_ENABL	; +3 / 41
+	LDA	#$0		; +2/16
+	STA	_TIA_GRP0	; +3/19 - oP0=X nP0=0 oP1=X nP1=X
+	STA	_TIA_GRP1	; +3/22 - oP0=0 nP0=0 oP1=X nP1=0
+	STA	_TIA_GRP0	; +3/25 - oP0=0 nP0=0 oP1=0 nP1=0
+	STA	_TIA_ENAM0	; +3/28
+	STA	_TIA_ENAM1	; +3/31
+	STA	_TIA_ENABL	; +3/34
 ; Sprite reflection off
-	STA	_TIA_REFP0	; +3 / 44
-	STA	_TIA_REFP1	; +3 / 47
-; Delay to sync
-	PHP			; +3 / 50
-	PLP			; +4 / 54
+	STA	_TIA_REFP0	; +3/37
+	STA	_TIA_REFP1	; +3/40
+; Player 0 no move (clock 74 trick flips top bit)
+	LDA	#$80		; +2/42
+	STA	_TIA_HMP0	; +3/45
+        NOP			; +2/47
+	PHP			; +3/50
+        PLP			; +3/54
 ; Set approximate sprite position
-	STA	_TIA_RESP0	; +3 / 57 / COL 171 / SPR 108
-	STA	_TIA_RESP1	; +3 / 60 / COL 180 / SPR 117
-; Move sprite 1 pixel to the left (+1 clock)
-	LDA	#$10		; +2 / 62
-	STA	_TIA_HMP1	; +3 / 65
-	STA	_TIA_WSYNC	; ? / 76
+	STA	_TIA_RESP0	; +3/57 COL=171 SPR=108
+	STA	_TIA_RESP1	; +3/60 COL=180 SPR=117
+; Player 1 move 1 pixel to the left (clock 74 trick)
+	LDA	#$90		; +2/62
+	STA	_TIA_HMP1	; +3/65
+
+; Trigger HMOVE on clock 74 (magic trick)
+	NOP			; +2/67
+        NOP			; +2/69
+        NOP			; +2/71
+	STA	_TIA_HMOVE	; +3/74
+        NOP			; +2/76
+; No WSYNC, perfect sync
 ; End active line 192
 
-; Active line 193
-	STA	_TIA_HMOVE	; +3 / 3
+; Start Active line 193
+; Set a solid playfield
+	LDA	#$FF		; +2/2
+        STA	_TIA_PF0	; +3/5
+        STA	_TIA_PF1	; +3/8
+        STA	_TIA_PF2	; +3/11
 
-	LDA	#$FF		; +2 / 5
-        STA	_TIA_PF0	; +3 / 8
-        STA	_TIA_PF1	; +3 / 11
-        STA	_TIA_PF2	; +3 / 14
+; Set palette for background and players
+	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/13
+	STA	_TIA_COLUBK	; +3/16
+	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2/18
+	STA	_TIA_COLUP0	; +3/21
+	STA	_TIA_COLUP1	; +3/24
 
-	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2 / 16
-	STA	_TIA_COLUBK	; +3 / 19
-	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2 / 21
-	STA	_TIA_COLUP0	; +3 / 24
-	STA	_TIA_COLUP1	; +3 / 27
+; Reset horizontal move registers
+	STA	_TIA_HMCLR	; +3/27
 
-	STA	_TIA_HMCLR	; +3 / 30
+; Setup sprite repeat / sprite delay (common bit 0)
+	LDA	#$3		; +2/29
+	STA	_TIA_NUSIZ0	; +3/32
+	LSR			; +2/34 - A contains 1
+	STA	_TIA_NUSIZ1	; +3/37
+	STA	_TIA_VDELP0	; +3/40
+	STA	_TIA_VDELP1	; +3/43
 
-; Sprite repeat setup
-	LDA	#$3		; +2 / 23
-	STA	_TIA_NUSIZ0	; +3 / 26
-	LSR			; +2 / 28 - A contains 1
-	STA	_TIA_NUSIZ1	; +3 / 31
-
-	LDA	#$1		; +2 / 32
-	STA	_TIA_VDELP0	; +3 / 35
-	STA	_TIA_VDELP1	; +3 / 38
-
-	STA	_TIA_WSYNC	; ? / 76
+	STA	_TIA_WSYNC	; +3/(46..76)
 ; End active line 193
 
 ; Start Active line 194
