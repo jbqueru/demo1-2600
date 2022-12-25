@@ -310,18 +310,16 @@ Lines:
 ; #                                 #
 ; ###################################
 ;
-; The sprite is displayed such that it matches the last 5 pixels of PF1
-; and the first 5 pixels of PF2, such that PF1 and PF2 can have the same
-; value (saves 2 clocks).
+; The sprite is displayed at 116..155, with 1 playfield pixel to the right
 ;
-; The pixel range is therefore 108..147. P0 at 108, P1 at 116
-; SPR=108 COL=171 CPU=57
+; P0 at 116, P1 at 124
 ; SPR=117 COL=180 CPU=60
+; SPR=126 COL=189 CPU=63
 ;
 ; Timing to write the pixel data:
-; Write 1: PIX=116..123 COL=184..191 CPU=62..63
-; Write 2: PIX=124..131 COL=192..199 CPU=64..66
-; Write 3: PIX=132..139 COL=200..207 CPU=67..69
+; Write 1: PIX=124..131 COL=192..199 CPU=64..66
+; Write 2: PIX=132..139 COL=200..207 CPU=67..69
+; Write 3: PIX=140..147 COL=208..215 CPU=70..71
 
 ; Start active line 192
 
@@ -346,28 +344,27 @@ Lines:
 	STA	_TIA_REFP0	; +3/37
 	STA	_TIA_REFP1	; +3/40
 
-; Player 0 no move (clock 74 trick flips top bit)
-	LDA	#$80		; +2/42
-	STA	_TIA_HMP0	; +3/45
+	; begin 15-cycle NOP
+	PHP			; +3/43
+	TSX			; +2/45
+	PLP			; +4/49
+	TXS			; +2/51
+	PLP			; +4/55
+	; end 15-cycle NOP
 
-	; 9-cycle NOP
-        NOP			; +2/47
-	PHP			; +3/50
-        PLP			; +3/54
-        ; end 9-cycle NOP
+; Player 0 move 1 pixel to the left (clock 74 trick flips top bit)
+	LDA	#$90		; +2/57
 
-; Set approximate sprite position
-	STA	_TIA_RESP0	; +3/57 COL=171 SPR=108
-	STA	_TIA_RESP1	; +3/60 COL=180 SPR=117
+	; Interleave set approximate sprite positions
+	STA	_TIA_RESP0	; +3/60 COL=171 SPR=108
+	STA	_TIA_RESP1	; +3/63 COL=180 SPR=117
 
-; Player 1 move 1 pixel to the left (clock 74 trick)
-	LDA	#$90		; +2/62
-	STA	_TIA_HMP1	; +3/65
+	STA	_TIA_HMP0	; +3/66
+; Player 1 move 2 pixels to the left (clock 74 trick flips top bit)
+	LDA	#$A0		; +2/68
+	STA	_TIA_HMP1	; +3/71
 
 ; Trigger HMOVE on clock 74 (magic trick)
-	NOP			; +2/67
-        NOP			; +2/69
-        NOP			; +2/71
 	STA	_TIA_HMOVE	; +3/74
         NOP			; +2/76
 ; No WSYNC, perfect sync
@@ -406,10 +403,9 @@ Lines:
         JMP	Line195To207	; +3/5
 
 	.align	$100,$EA	; $EA is NOP
-Line195To207:
 	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
-        			; +3/76 - end active line 195-207
 
+Line195To207:
 ; Active lines 195-208
 ; Set raster palette for signature bar
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
@@ -435,25 +431,27 @@ Line195To207:
 ; are identical between $FF and $E0, so we can change while
 ; those bits are getting displayed
 	LDA	#$F8		; +2/39
-	STA	_TIA_PF1	; +3/42 COL=111 PIX=43
+	STA	_TIA_PF1	; +3/42 COL=126 PIX=58
 	LDA	#$80		; +2/44
-	STA	_TIA_PF2	; +3/47 COL=135 PIX=67
+	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 
 	LDX	Logo4,Y		; +4/51
 	LDA	Logo5,Y		; +4/55
 
-	NOP
-	NOP
+	; begin 7-cycle NOP
+	PHP			; +3/58
+	PLP			; +4/62
+	; end 7-cycle NOP
 
-	STX	_TIA_GRP1	; +3/62 COL=186 PIX=118 - oP0=3 nP0=3 oP1=2 nP1=4
-	STA	_TIA_GRP0	; +3/65 COL=195 PIX=127 - oP0=3 nP0=5 oP1=4 nP1=4
-	STY	_TIA_GRP1	; +3/68 COL=204 PIX=136 - oP0=5 nP0=5 oP1=4 nP1=X
+	STX	_TIA_GRP1	; +3/65 COL=195 PIX=127 - oP0=3 nP0=3 oP1=2 nP1=4
+	STA	_TIA_GRP0	; +3/68 COL=204 PIX=136 - oP0=3 nP0=5 oP1=4 nP1=4
+	STY	_TIA_GRP1	; +3/71 COL=213 PIX=145 - oP0=5 nP0=5 oP1=4 nP1=X
 
-	DEY			; +2/70
-	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
-				; Not taken +2/72
+	DEY			; +2/73
+	BPL	Line195To207	; Taken: +3/76 - MUST NOT CROSS PAGE BOUNDARY
+				; Not taken +2/75
 
-	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
+;	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
 
 ; Clean up playfield
 	LDA	#$FF		; +2/2
