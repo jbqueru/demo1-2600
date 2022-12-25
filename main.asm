@@ -144,9 +144,9 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
-	LDA	#Colors1 & $FF
+	LDA	#(Colors1 + 2) & $FF
 	STA	_ZP_SIGPAL_LO
-	LDA	#Colors1 >> 8
+	LDA	#(Colors1 + 2) >> 8
 	STA	_ZP_SIGPAL_HI
 
 MainLoop:			; +3/3 from the JMP that gets here
@@ -398,8 +398,8 @@ Lines:
 	STA	_TIA_WSYNC	; +3/(46..76)
 ; End active line 193
 
-; Start Active line 194
-	LDY	#13		; +2/2
+; Start active line 194
+	LDY	#14		; +2/2
 	JMP	Line195To207	; +3/5
 
 	.align	$100,$EA	; $EA is NOP
@@ -417,11 +417,11 @@ Line195To207:
 	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 
-	LDA	Logo1,Y		; +4/20
+	LDA	Logo1 - 1,Y	; +4/20
 	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1 - oP0=X nP0=1 oP1=X nP1=X
-	LDA	Logo2,Y		; +4/27
+	LDA	Logo2 - 1,Y	; +4/27
 	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22 - oP0=1 nP0=1 oP1=X nP1=2
-	LDA	Logo3,Y		; +4/34
+	LDA	Logo3 - 1,Y	; +4/34
 	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43 - oP0=1 nP0=3 oP1=2 nP1=2
 
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
@@ -436,8 +436,8 @@ Line195To207:
 	LDA	#$80		; +2/44
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 
-	LDX	Logo4,Y		; +4/51
-	LDA	Logo5,Y		; +4/55
+	LDX	Logo4 - 1,Y	; +4/51
+	LDA	Logo5 - 1,Y	; +4/55
 
 	NOP			; +2/57
 	NOP			; +2/59
@@ -447,24 +447,46 @@ Line195To207:
 	STA	_TIA_GRP0	; +3/67 COL=201 PIX=133 - oP0=3 nP0=5 oP1=4 nP1=4
 	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142 - oP0=5 nP0=5 oP1=4 nP1=X
 
-	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
+	BNE	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
 				; Not taken +2/72
 
-	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
+	STA	_TIA_WSYNC	; +3/(75..76)
+; End active line 208
+
+; Start active line 209
+; Set palette
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 
 ; Clean up playfield
-	LDA	#$FF		; +2/2
-	STA	_TIA_PF1	; +3/5
-	STA	_TIA_PF2	; +3/8
-; Clean up sprites
-	LDA	#$0		; +2/10
-	STA	_TIA_GRP0	; +3/13
-	STA	_TIA_GRP1	; +3/16
-	STA	_TIA_GRP0	; +3/19
-	STA	_TIA_WSYNC	; +3/(22..76) - end active line 209
+	LDA	#$FF		; +2/10
+	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
+	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 
-	STA	_TIA_WSYNC	; +3/(3..76) end active line 210
-	STA	_TIA_WSYNC	; +3/(3..76) end active line 211
+; Clean up sprites
+	LDA	#$0		; +2/18
+	STA	_TIA_GRP0	; +3/21 COL=63 PIX=-5
+	STA	_TIA_GRP1	; +3/24 COL=72 PIX=4
+	STA	_TIA_GRP0	; +3/27 COL=81 PIX=13
+
+	STA	_TIA_WSYNC	; +3/(30..76) - end active line 209
+; End active line 209
+
+; Start active line 210
+	DEC	_ZP_SIGPAL_LO	; +5/5
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
+	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
+	STA	_TIA_WSYNC	; +3/(16..76)
+; End active line 210
+
+; Start active line 211
+	DEC	_ZP_SIGPAL_LO	; +5/5
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
+	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
+	INC	_ZP_SIGPAL_LO	; +5/18
+	INC	_ZP_SIGPAL_LO	; +5/23
+	STA	_TIA_WSYNC	; +3/(26..76)
+; End active line 211
 
 ; -------------------------------
 ; Technically beginning of Overscan line 1.
@@ -478,6 +500,7 @@ Line195To207:
 Rts12:	RTS
 
 ;	.align	$100,0
+;	.byte	0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
 
@@ -488,7 +511,6 @@ Rts12:	RTS
 ; xxx.x.xx .x.xx.x. ...x.x.x ....x.xx x.x.xx.x
 ; x..xx... xxx...x. ..x..x.. x...x.xx x.x...xx
 ; xxxxxxxx xxxxxxx. xx...x.. .xx.xxxx xxxxxxxx
-
 
 Logo1:
 	.byte	%11111111
@@ -571,7 +593,9 @@ Logo5:
 	.byte	%11111111
 
 Colors1:
-	.byte	$10,$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12,$10
+	.byte	$48,$0A,$88
+        .byte	$10,$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12,$10
+        .byte	$88,$0A,$48
 
 ; Reset / Start vectors
 	.org	$FFFC
