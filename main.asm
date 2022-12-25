@@ -14,6 +14,9 @@
 
 	.processor	6502
 
+; -------------------------------
+; TIA registers
+
 _TIA_VSYNC	.equ	$00
 _TIA_VBLANK	.equ	$01
 _TIA_WSYNC	.equ	$02
@@ -101,6 +104,9 @@ _TIA_LU_LIGHT	.equ	$0A
 _TIA_LU_V_LIGHT	.equ	$0C
 _TIA_LU_MAX	.equ	$0E
 
+; -------------------------------
+; PIA registers
+
 _PIA_DATA_A	.equ	$280
 _PIA_DDR_A	.equ	$281
 _PIA_DATA_B	.equ	$282
@@ -113,9 +119,15 @@ _PIA_WT1024T	.equ	$297
 
 _PIA_RTIM	.equ	$284
 
+; -------------------------------
+; Zero-page layout
+
 _ZP_LINE_COUNT	.equ	$80
 
-	.org	$F000,$EA
+; -------------------------------
+; Code start
+
+	.org	$F000,$EA	; $EA is NOP
 Main:
 ; Set up CPU
 	CLD			; Clear decimal mode
@@ -123,8 +135,8 @@ Main:
 	TXS			; Set stack pointer
 
 ; Clear zero-page (TIA + RAM)
-	LDA	#0
-	TAX
+	INX			; X is 0
+	TXA
 ClearZeroPage:
 	STA	0,X
 	INX
@@ -285,15 +297,24 @@ Lines:
 				; not taken: +2/7
 	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
 
-
-; 40-pixel sprite for signature
+; ###################################
+; #                                 #
+; #  40-pixel sprite for signature  #
+; #                                 #
+; ###################################
 ;
-; Display at pixel 108 - 147 -> same value in PF1 and PF2
-; SPR 108 = COL 171 = CPU 57
-; SPR 117 = COL 180 = CPU 60
-; Write 1: PIX 116 to 123 = COL 184 to 191 = CPU 62 to 63
-; Write 2: PIX 124 to 131 = COL 192 to 199 = CPU 64 to 66
-; Write 3: PIX 132 to 139 = COL 200 to 207 = CPU 67 to 69
+; The sprite is displayed such that it matches the last 5 pixels of PF1
+; and the first 5 pixels of PF2, such that PF1 and PF2 can have the same
+; value (saves 2 clocks).
+;
+; The pixel range is therefore 108..147. P0 at 108, P1 at 116
+; SPR=108 COL=171 CPU=57
+; SPR=117 COL=180 CPU=60
+;
+; Timing to write the pixel data:
+; Write 1: PIX=116..123 COL=184..191 CPU=62..63
+; Write 2: PIX=124..131 COL=192..199 CPU=64..66
+; Write 3: PIX=132..139 COL=200..207 CPU=67..69
 
 ; Start active line 192
 
@@ -303,7 +324,7 @@ Lines:
 	STA	_TIA_COLUBK	; +3/5
 	STA	_TIA_COLUPF	; +3/8
 	STA	_TIA_COLUP0	; +3/11
-	STA	_TIA_COLUP1	; +3/14 COL=42 early enough!
+	STA	_TIA_COLUP1	; +3/14 COL=42 - early enough to hide everything
 
 ; Disable all graphics
 	LDA	#$0		; +2/16
@@ -313,18 +334,25 @@ Lines:
 	STA	_TIA_ENAM0	; +3/28
 	STA	_TIA_ENAM1	; +3/31
 	STA	_TIA_ENABL	; +3/34
+
 ; Sprite reflection off
 	STA	_TIA_REFP0	; +3/37
 	STA	_TIA_REFP1	; +3/40
+
 ; Player 0 no move (clock 74 trick flips top bit)
 	LDA	#$80		; +2/42
 	STA	_TIA_HMP0	; +3/45
+
+	; 9-cycle NOP
         NOP			; +2/47
 	PHP			; +3/50
         PLP			; +3/54
+        ; end 9-cycle NOP
+
 ; Set approximate sprite position
 	STA	_TIA_RESP0	; +3/57 COL=171 SPR=108
 	STA	_TIA_RESP1	; +3/60 COL=180 SPR=117
+
 ; Player 1 move 1 pixel to the left (clock 74 trick)
 	LDA	#$90		; +2/62
 	STA	_TIA_HMP1	; +3/65
@@ -377,15 +405,15 @@ Line195To207:
 
 ; Active lines 195-208
 	LDA	#$FF		; +2/2
-	STA	_TIA_PF1	; +3/5
-	STA	_TIA_PF2	; +3/8
+	STA	_TIA_PF1	; +3/5 COL=15 PIX=-53
+	STA	_TIA_PF2	; +3/8 COL=24 PIX=-44
 
 	LDA	Logo1,Y		; +4/12
-        STA	_TIA_GRP0	; +3/15 - oP0=X nP0=1 oP1=X nP1=X
+        STA	_TIA_GRP0	; +3/15 COL=45 PIX=-23 - oP0=X nP0=1 oP1=X nP1=X
 	LDA	Logo2,Y		; +4/19
-        STA	_TIA_GRP1	; +3/22 - oP0=1 nP0=1 oP1=X nP1=2
+        STA	_TIA_GRP1	; +3/22 COL=66 PIX=-2 - oP0=1 nP0=1 oP1=X nP1=2
 	LDA	Logo3,Y		; +4/26
-        STA	_TIA_GRP0	; +3/29 - oP0=1 nP0=3 oP1=2 nP1=2
+        STA	_TIA_GRP0	; +3/29 COL=87 PIX=19 - oP0=1 nP0=3 oP1=2 nP1=2
 
 	LDX	Logo4,Y		; +4/33
 	NOP			; +2/35
