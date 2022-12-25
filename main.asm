@@ -133,13 +133,15 @@ ClearZeroPage:
 MainLoop:
 ; -------------------------------
 ; Overscan - 17 lines total
+
+; Start overscan line 0
 	LDA	#2		; +2/5
 	STA	_TIA_VBLANK	; +3/8 - turn blank on
 
 ; Skip 16 lines. 16 lines is 16*76 = 1216 CPU cycles, i.e. 19*64.
 ; In other words, 19 ticks of 64T is 16 lines.
 ; Initialize timer at 20, it'll spend 64 cycles each in 19, 18... 1.
-; When it reaches 0, we're into the 17th line.
+; When it reaches 0, we've skipped 16 lines.
 ; Timer is set 14 cycles into the line, plus 6 cycles of loop jitter,
 ; well within the 73 cycles before WSYNC.
 
@@ -151,7 +153,8 @@ TimOverscan:
 	CMP	_PIA_RTIM
 	BNE	TimOverscan
 
-	STA	_TIA_WSYNC	; +3/(?->76) - end of overscan line 16
+	STA	_TIA_WSYNC	; +3/(?->76)
+; End overscan line 16
 
 ; -------------------------------
 ; Vsync - 3 lines
@@ -163,27 +166,29 @@ TimOverscan:
 
 ; -------------------------------
 ; Vblank - 30 lines total
+
+; Start vblank line 0
 	LDA	#0		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync off
 
 ; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
 ; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
 ; Initialize timer at 35, it'll spend 64 cycles each in 34, 33... 1.
-; When it reaches 0, we're into the 29th line.
+; When it reaches 0, we've skipped 28 lines.
 ; Timer is set 11 cycles into the line, fires 48 cycles after the exact
 ; position, plus 6 cycles of loop jitter, within the 73 cycles
 ; before WSYNC.
 
-	LDA	#35		; +2 / 7 - load timer value
-	STA	_PIA_WT64T	; +4 / 11 - and set it into the PIA
+	LDA	#35		; +2/7 - load timer value
+	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
 
 	LDA	#0
 TimVblank:
 	CMP	_PIA_RTIM
 	BNE	TimVblank
 
-	STA	_TIA_WSYNC	; +3/(?..76) ; end vblank line 28
-
+	STA	_TIA_WSYNC	; +3/(?..76)
+; End vblank line 28
 
 ; Segment playfield lines every 16 pixels = 10 segments
 ; P0 repeat 3x
@@ -202,44 +207,62 @@ TimVblank:
 ; SPR=15 COL=78 CPU=26
 ; SPR=63 COL=126 CPU=42
 
-; Stop sprite delay (Todo: cheaper to embrace it?)
+; Start vblank line 29
+
+; Stop sprite delay
 	LDA	#$0		; +2/2
 	STA	_TIA_VDELP0	; +3/5
 	STA	_TIA_VDELP1	; +3/8
+
 ; Disable sprite reflection
 	STA	_TIA_RESP0	; +3/11
 	STA	_TIA_RESP1	; +3/14
+
 ; Color black (happens to be 0).
 	STA	_TIA_COLUP0	; +3/17
 	STA	_TIA_COLUP1	; +3/20
+	STA	_TIA_COLUPF	; +3/23
 
-	BIT	0		; +3/23
-        STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
+	; Interleave set P0 position
+	STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
 
-	LDA	#$C0		; +2/28
-	STA	_TIA_GRP0	; +3/31
-	STA	_TIA_GRP1	; +3/34
+	STA	_TIA_COLUBK	; +3/29
 
-	LDA	#$13		; +2/36
-	STA	_TIA_NUSIZ0	; +3/39
-        STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
+; Set sprite pattern (same for both players - 2 leftmost pixels)
+	LDA	#$C0		; +2/31
+	STA	_TIA_GRP0	; +3/34
+	STA	_TIA_GRP1	; +3/37
 
-	STA	_TIA_ENAM0	; +3/45
-	STA	_TIA_ENAM1	; +3/48
+; Set missile size / sprite repeat / enable missile (common bit 1).
+	LDA	#$13		; +2/39 - 2-pixel missile, 3 copies close
+
+	; Interleave set P1 position
+	STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
+
+	STA	_TIA_NUSIZ0	; +3/45
+	STA	_TIA_NUSIZ1	; +3/48
         NOP			; +2/50
+
+	; Interleave set M0 position
 	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
-	STA	_TIA_NUSIZ1	; +3/56
 
-	PHP			; +3/59
-        PLP			; +4/63
-        BIT	0		; +3/66
+	STA	_TIA_ENAM0	; +3/56
+	STA	_TIA_ENAM1	; +3/59
+
+; Prepare loop
+	LDY	#24		; +2/61
+	STY	_ZP_LINE_COUNT	; +3/64
+
+; Turn Vblank off
+	LDY	#0		; +2/66
+
+	; Interleave set M1 position
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
-	NOP			; /71
 
-	LDX	#$0		; +2/73
-	STX	_TIA_VBLANK	; +3/76 COL=228 PIX=160 - turn blank off
+	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
 
-	; exact sync		; end vblank line 29
+	STA	_TIA_WSYNC	; +3/(75..76)
+; End vblank line 29
 
 
 
@@ -247,20 +270,16 @@ TimVblank:
 ; Active area - 212 lines total
 
 ; Active lines 0-191
-	LDY	#192		; +2 / 2
+	LDY	#24		; +2 / 2
 	STY	_ZP_LINE_COUNT	; +3 / 5
 	STY	_ZP_LINE_COUNT	; +3 / 8 - extra to align line 0 with subsequent
 Lines:
-;	LDA	#$AA		; +2 / 2
-;	LDX	#$AA		; +2 / 4
-;	LDY	#$AA		; +2 / 6
-;	STA	_TIA_PF0
-;	STX	_TIA_PF1
-;	STY	_TIA_PF2
 	LDY	#$A4
 	STY	_TIA_COLUPF
 
+	.repeat	8
 	STA	_TIA_WSYNC	; ? / 76 - end of line 8*n + 7
+        .repend
 
 	DEC	_ZP_LINE_COUNT	; +5 / 5
 	BNE	Lines		; taken: +3 / 8 DO NOT CROSS PAGE BOUNDARIES
