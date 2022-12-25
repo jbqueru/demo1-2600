@@ -325,32 +325,31 @@ Lines:
 
 ; Set things up for signature
 ; Set all colors to be the same - everything is invisible
-	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2/2
-	STA	_TIA_COLUBK	; +3/5
-	STA	_TIA_COLUPF	; +3/8
-	STA	_TIA_COLUP0	; +3/11
-	STA	_TIA_COLUP1	; +3/14 COL=42 - early enough to hide everything
+	LDY	#17		; +2/2 - 3 lines above + 14 lines of bitmap
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/7
+	STA	_TIA_COLUBK	; +3/10 COL=30 PIX=-38
+	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
+	STA	_TIA_COLUP0	; +3/16 COL=48 PIX=-20
+	STA	_TIA_COLUP1	; +3/19 COL=57 PIX=-11 - early enough
 
 ; Disable all graphics
-	LDA	#$0		; +2/16
-	STA	_TIA_GRP0	; +3/19 - oP0=X nP0=0 oP1=X nP1=X
-	STA	_TIA_GRP1	; +3/22 - oP0=0 nP0=0 oP1=X nP1=0
-	STA	_TIA_GRP0	; +3/25 - oP0=0 nP0=0 oP1=0 nP1=0
-	STA	_TIA_ENAM0	; +3/28
-	STA	_TIA_ENAM1	; +3/31
-	STA	_TIA_ENABL	; +3/34
+	LDA	#$0		; +2/21
+	STA	_TIA_GRP0	; +3/24 - oP0=X nP0=0 oP1=X nP1=X
+	STA	_TIA_GRP1	; +3/27 - oP0=0 nP0=0 oP1=X nP1=0
+	STA	_TIA_GRP0	; +3/30 - oP0=0 nP0=0 oP1=0 nP1=0
+	STA	_TIA_ENAM0	; +3/33
+	STA	_TIA_ENAM1	; +3/36
+	STA	_TIA_ENABL	; +3/39
 
 ; Sprite reflection off
-	STA	_TIA_REFP0	; +3/37
-	STA	_TIA_REFP1	; +3/40
+	STA	_TIA_REFP0	; +3/42
+	STA	_TIA_REFP1	; +3/45
 
-	; begin 15-cycle NOP
-	PHP			; +3/43
-	TSX			; +2/45
-	PLP			; +4/49
-	TXS			; +2/51
+	; begin 10-cycle NOP
+	PHP			; +3/48
+        BIT	0		; +3/51
 	PLP			; +4/55
-	; end 15-cycle NOP
+	; end 10-cycle NOP
 
 ; Player 0 move 1 pixel to the left (clock 74 trick flips top bit)
 	LDA	#$90		; +2/57
@@ -366,41 +365,48 @@ Lines:
 
 ; Trigger HMOVE on clock 74 (magic trick)
 	STA	_TIA_HMOVE	; +3/74
-	NOP			; +2/76
+	DEY			; +2/76
 ; No WSYNC, perfect sync
 ; End active line 192
 
 ; Start Active line 193
+
+; Set raster palette
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 ; Set a solid playfield
-	LDA	#$FF		; +2/2
-	STA	_TIA_PF0	; +3/5
-	STA	_TIA_PF1	; +3/8
-	STA	_TIA_PF2	; +3/11
+	LDA	#$FF		; +2/10
+	STA	_TIA_PF0	; +3/13 COL=39 PIX=-29
+	STA	_TIA_PF1	; +3/16 COL=48 PIX=-20
+	STA	_TIA_PF2	; +3/19 COL=57 PIX=-11
 
 ; Set palette for background and players
-	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/13
-	STA	_TIA_COLUBK	; +3/16
-	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2/18
-	STA	_TIA_COLUP0	; +3/21
-	STA	_TIA_COLUP1	; +3/24
+	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/21
+	STA	_TIA_COLUBK	; +3/24
+	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2/26
+	STA	_TIA_COLUP0	; +3/29
+	STA	_TIA_COLUP1	; +3/32
 
 ; Reset horizontal move registers
-	STA	_TIA_HMCLR	; +3/27
+	STA	_TIA_HMCLR	; +3/35
 
 ; Setup sprite repeat / sprite delay (common bit 0)
-	LDA	#$3		; +2/29
-	STA	_TIA_NUSIZ0	; +3/32
-	LSR			; +2/34 - A contains 1
-	STA	_TIA_NUSIZ1	; +3/37
-	STA	_TIA_VDELP0	; +3/40
-	STA	_TIA_VDELP1	; +3/43
-
-	STA	_TIA_WSYNC	; +3/(46..76)
+	LDA	#$3		; +2/37
+	STA	_TIA_NUSIZ0	; +3/30
+	LSR			; +2/42 - A contains 1
+	STA	_TIA_NUSIZ1	; +3/45
+	STA	_TIA_VDELP0	; +3/48
+	STA	_TIA_VDELP1	; +3/51
+	DEY			; +2/53
+	STA	_TIA_WSYNC	; +3/(56..76)
 ; End active line 193
 
 ; Start active line 194
-	LDY	#14		; +2/2
-	JMP	Line195To207	; +3/5
+; Set raster palette
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	DEY			; +2/10
+	JMP	Line195To207	; +3/13
 
 	.align	$100,$EA	; $EA is NOP
 Line195To207:
@@ -594,7 +600,7 @@ Logo5:
 
 Colors1:
 	.byte	$48,$0A,$88
-        .byte	$10,$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12,$10
+        .byte	$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12
         .byte	$88,$0A,$48
 
 ; Reset / Start vectors
