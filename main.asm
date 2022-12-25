@@ -163,8 +163,8 @@ TimOverscan:
 
 ; -------------------------------
 ; Vblank - 30 lines total
-	LDA	#0		; +2 / 2
-	STA	_TIA_VSYNC	; +3 / 5 - turn sync off
+	LDA	#0		; +2/2
+	STA	_TIA_VSYNC	; +3/5 - turn sync off
 
 ; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
 ; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
@@ -182,18 +182,64 @@ TimVblank:
 	CMP	_PIA_RTIM
 	BNE	TimVblank
 
-	STA	_TIA_WSYNC	; ? / 76 ; end vblank line 35
+	STA	_TIA_WSYNC	; +3/(?..76) ; end vblank line 28
 
-	; Start 71-clock delay
-	LDX	#14		; +2 / 2
-	DEX			; 14*2 = +28
-	BNE	*-1		; 13*3 + 2 = +41 / 71
-	; End 71-clock delay
 
-	NOP			; +2 / 73
-	STX	_TIA_VBLANK	; +3 / 76 - turn blank off
+; Segment playfield lines every 16 pixels = 10 segments
+; P0 repeat 3x
+; M0 repeat 3x
+; M1 repeat 2x (or 3x w/ overlap)
+; P1 repeat 2x (or 3x w/ overlap)
 
-	; exact sync		; end vblank line 36
+; possible M positions
+; MIS=47 COL=111 CPU=37 (implies MIS=63 MIS=79)
+; MIS=95 COL=159 CPU=53 (implies MIS=111 MIS=127)
+; MIS=143 COL=207 CPU=69 (implies MIS=159 MIS=15)
+
+; Assuming 95-143, missing 31 47 63 79
+; Can be done at 31 or 15
+
+; SPR=15 COL=78 CPU=26
+; SPR=63 COL=126 CPU=42
+
+; Stop sprite delay (Todo: cheaper to embrace it?)
+	LDA	#$0		; +2/2
+	STA	_TIA_VDELP0	; +3/5
+	STA	_TIA_VDELP1	; +3/8
+; Disable sprite reflection
+	STA	_TIA_RESP0	; +3/11
+	STA	_TIA_RESP1	; +3/14
+; Color black (happens to be 0).
+	STA	_TIA_COLUP0	; +3/17
+	STA	_TIA_COLUP1	; +3/20
+
+	BIT	0		; +3/23
+        STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
+
+	LDA	#$C0		; +2/28
+	STA	_TIA_GRP0	; +3/31
+	STA	_TIA_GRP1	; +3/34
+
+	LDA	#$13		; +2/36
+	STA	_TIA_NUSIZ0	; +3/39
+        STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
+
+	STA	_TIA_ENAM0	; +3/45
+	STA	_TIA_ENAM1	; +3/48
+        NOP			; +2/50
+	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
+	STA	_TIA_NUSIZ1	; +3/56
+
+	PHP			; +3/59
+        PLP			; +4/63
+        BIT	0		; +3/66
+	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
+	NOP			; /71
+
+	LDX	#$0		; +2/73
+	STX	_TIA_VBLANK	; +3/76 COL=228 PIX=160 - turn blank off
+
+	; exact sync		; end vblank line 29
 
 
 
@@ -205,12 +251,12 @@ TimVblank:
 	STY	_ZP_LINE_COUNT	; +3 / 5
 	STY	_ZP_LINE_COUNT	; +3 / 8 - extra to align line 0 with subsequent
 Lines:
-	LDA	#$AA		; +2 / 2
-	LDX	#$AA		; +2 / 4
-	LDY	#$AA		; +2 / 6
-	STA	_TIA_PF0
-	STX	_TIA_PF1
-	STY	_TIA_PF2
+;	LDA	#$AA		; +2 / 2
+;	LDX	#$AA		; +2 / 4
+;	LDY	#$AA		; +2 / 6
+;	STA	_TIA_PF0
+;	STX	_TIA_PF1
+;	STY	_TIA_PF2
 	LDY	#$A4
 	STY	_TIA_COLUPF
 
@@ -220,9 +266,18 @@ Lines:
 	BNE	Lines		; taken: +3 / 8 DO NOT CROSS PAGE BOUNDARIES
 				; not taken: +2 / 7
 
+; 40-pixel sprite for signature
+;
+; Display at pixel 108 - 147 -> same value in PF1 and PF2
+; SPR 108 = COL 171 = CPU 57
+; SPR 117 = COL 180 = CPU 60
+; Write 1: PIX 116 to 123 = COL 184 to 191 = CPU 62 to 63
+; Write 2: PIX 124 to 131 = COL 192 to 199 = CPU 64 to 66
+; Write 3: PIX 132 to 139 = COL 200 to 207 = CPU 67 to 69
 
 ; Active line 192
 ; Set things up for signature
+
 
 ; Set all colors to be the same - everything is invisible
 	LDA	#_TIA_CO_PUR_BLU + _TIA_LU_DARK	; +2 / 9
@@ -303,9 +358,6 @@ Line195To207:
 	NOP			; +2/35
         NOP			; +2/37
 
-	LDA	#$E0		; +2/39
-	STA	_TIA_PF1	; +3/42 COL=111 PIX=43
-	STA	_TIA_PF2	; +3/45 COL=135 PIX=67
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
 ; update PF2 between 48 (theo) / 45 (actual) and 64
 ; PF2 works at 44 on my emulator, but there seem to be
@@ -313,6 +365,9 @@ Line195To207:
 ; Difference between theo and actual is because top 3 bits
 ; are identical between $FF and $E0, so we can change while
 ; those bits are getting displayed
+	LDA	#$E0		; +2/39
+	STA	_TIA_PF1	; +3/42 COL=111 PIX=43
+	STA	_TIA_PF2	; +3/45 COL=135 PIX=67
 
 	LDA	Logo5,Y		; +4/49
 
@@ -352,7 +407,11 @@ Line195To207:
 
 	JMP	MainLoop	; +3/3
 
-	.org	$F100
+
+; A naked RTS, allowing for a 12-clock delay with a JSR here
+Rts12:	RTS
+
+;	.org	$F100
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
 ; ........ ........ ........ ........ ........
