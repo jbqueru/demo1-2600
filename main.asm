@@ -126,6 +126,14 @@ _ZP_LINE_COUNT	.equ	$80
 _ZP_SIGPAL_LO	.equ	$81
 _ZP_SIGPAL_HI	.equ	$82
 
+; ########################
+; ########################
+; ###                  ###
+; ###  Initialization  ###
+; ###                  ###
+; ########################
+; ########################
+
 ; -------------------------------
 ; Code start
 
@@ -144,70 +152,112 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
+; Set color pointer for signature background
+; It's off-by-two for programming convenience, where the 20 lines
+; in the signature area are counted from 17 to -2 (technically to 0,
+; with the last two steps done by hand).
 	LDA	#(Colors1 + 2) & $FF
 	STA	_ZP_SIGPAL_LO
 	LDA	#(Colors1 + 2) >> 8
 	STA	_ZP_SIGPAL_HI
 
-MainLoop:			; +3/3 from the JMP that gets here
-; -------------------------------
-; Overscan - 17 lines total
+; ##############################
+; ##############################
+; ###                        ###
+; ###  Main display routine  ###
+; ###                        ###
+; ##############################
+; ##############################
 
-; Start overscan line 0
+MainLoop:			; +3/3 from the JMP that gets here
+
+; =========================
+; Overscan - 17 lines total
+; =========================
+
+; -------------------------------
+; Start overscan line 0		;
 	LDA	#2		; +2/5
 	STA	_TIA_VBLANK	; +3/8 - turn blank on
-
+				;
 ; Skip 16 lines. 16 lines is 16*76 = 1216 CPU cycles, i.e. 19*64.
 ; In other words, 19 ticks of 64T is 16 lines.
 ; Initialize timer at 20, it'll spend 64 cycles each in 19, 18... 1.
 ; When it reaches 0, we've skipped 16 lines.
 ; Timer is set 14 cycles into the line, plus 6 cycles of loop jitter,
 ; well within the 73 cycles before WSYNC.
-
+				;
 	LDA	#19		; +2/10
 	STA	_PIA_WT64T	; +4/14
-
-	LDA	#0
-TimOverscan:
-	CMP	_PIA_RTIM
-	BNE	TimOverscan
-
+				;
+; About 1200 cycles available here
+				;
+	LDA	#0		;
+TimOverscan:			;
+	CMP	_PIA_RTIM	;
+	BNE	TimOverscan	;
+				;
 	STA	_TIA_WSYNC	; +3/(?->76)
-; End overscan line 16
+; End overscan line 16		;
+; -------------------------------
+
+; =====================
+; Vsync - 3 lines total
+; =====================
 
 ; -------------------------------
-; Vsync - 3 lines
+; Start vsync line 0		;
 	LDA	#2		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync on
-	STA	_TIA_WSYNC	; +3/(8..76) - end of vsync line 0
+	STA	_TIA_WSYNC	; +3/(8..76)
+; End vsync line 0		;
+; -------------------------------
+
+; -------------------------------
+; Start vsync line 1		;
 	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 1
+; End vsync line 1		;
+; -------------------------------
+
+; -------------------------------
+; Start vsync line 2		;
 	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 2
+; End vsync line 2		;
+; -------------------------------
+
+; =======================
+; Vblank - 30 lines total
+; =======================
 
 ; -------------------------------
 ; Vblank - 30 lines total
 
-; Start vblank line 0
+; -------------------------------
+; Start vblank line 0		;
 	LDA	#0		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync off
-
+				;
 ; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
 ; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
 ; Initialize timer at 35, it'll spend 64 cycles each in 34, 33... 1.
 ; When it reaches 0, we've skipped 28 lines.
 ; Timer is set 11 cycles into the line, fires 48 cycles after the exact
 ; position, plus 6 cycles of loop jitter, within the 73 cycles
-; before WSYNC.
-
+; before WSYNC.			;
+				;
 	LDA	#35		; +2/7 - load timer value
 	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
-
-	LDA	#0
-TimVblank:
-	CMP	_PIA_RTIM
-	BNE	TimVblank
-
+				;
+; about 2100 cycles available here
+				;
+	LDA	#0		;
+TimVblank:			;
+	CMP	_PIA_RTIM	;
+	BNE	TimVblank	;
+				;
 	STA	_TIA_WSYNC	; +3/(?..76)
-; End vblank line 28
+; End vblank line 28		;
+; -------------------------------
 
 ; Segment playfield lines every 16 pixels = 10 segments
 ; P0 repeat 3x
@@ -290,7 +340,6 @@ Line7To183:
 ; -------------------------------
 ; Active area - 212 lines total
 
-; Active lines 0-191
 Lines:
 	LDY	#$A4		; +2/2
 	STY	_TIA_COLUPF	; +3/5
@@ -303,6 +352,8 @@ Lines:
 	BNE	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
 	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
+; 
+; -------------------------------
 
 ; ###################################
 ; #                                 #
