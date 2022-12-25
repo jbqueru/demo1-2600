@@ -133,33 +133,33 @@ ClearZeroPage:
 MainLoop:
 ; -------------------------------
 ; Overscan - 17 lines total
-	LDA	#2		; +2 / 12
-	STA	_TIA_VBLANK	; +3 / 15 - turn blank on
+	LDA	#2		; +2/5
+	STA	_TIA_VBLANK	; +3/8 - turn blank on
 
 ; Skip 16 lines. 16 lines is 16*76 = 1216 CPU cycles, i.e. 19*64.
 ; In other words, 19 ticks of 64T is 16 lines.
 ; Initialize timer at 20, it'll spend 64 cycles each in 19, 18... 1.
 ; When it reaches 0, we're into the 17th line.
-; Timer is set 21 cycles into the line, plus 6 cycles of loop jitter,
+; Timer is set 14 cycles into the line, plus 6 cycles of loop jitter,
 ; well within the 73 cycles before WSYNC.
 
-	LDA	#19		; +2 / 17
-	STA	_PIA_WT64T	; +4 / 21
+	LDA	#19		; +2/10
+	STA	_PIA_WT64T	; +4/14
 
 	LDA	#0
 TimOverscan:
 	CMP	_PIA_RTIM
 	BNE	TimOverscan
 
-	STA	_TIA_WSYNC	; end of overscan line 16
+	STA	_TIA_WSYNC	; +3/(?->76) - end of overscan line 16
 
 ; -------------------------------
 ; Vsync - 3 lines
-	LDA	#2
-	STA	_TIA_VSYNC	; turn sync on
-	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 0
-	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 1
-	STA	_TIA_WSYNC	; 3+ / 76 - end of vsync line 2
+	LDA	#2		; +2/2
+	STA	_TIA_VSYNC	; +3/5 - turn sync on
+	STA	_TIA_WSYNC	; +3/(8..76) - end of vsync line 0
+	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 1
+	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 2
 
 ; -------------------------------
 ; Vblank - 30 lines total
@@ -282,12 +282,12 @@ Lines:
 	STA	_TIA_WSYNC	; ? / 76 - end active line 193
 
 ; Active line 194
-	LDY	#13
+	LDY	#13		; +2/2
 Line195To207:
-	STA	_TIA_WSYNC	; ? / 76 - end active line 194
+	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
+        			; +3/76 - end active line 195-207
 
 ; Active lines 195-208
-	.repeat 14
 	LDA	#$FF		; +2/2
 	STA	_TIA_PF1	; +3/5
 	STA	_TIA_PF2	; +3/8
@@ -318,38 +318,41 @@ Line195To207:
 
 	; 10-cycle NOP
 	PHP			; +3/52
-        BIT	0		; +3/55
-        PLP			; +4/59
+	BIT	0		; +3/55
+	PLP			; +4/59
 
 	STX	_TIA_GRP1	; +3/62 COL=186 PIX=118 - oP0=3 nP0=3 oP1=2 nP1=4
 	STA	_TIA_GRP0	; +3/65 COL=195 PIX=127 - oP0=3 nP0=5 oP1=4 nP1=4
 	STY	_TIA_GRP1	; +3/68 COL=204 PIX=136 - oP0=5 nP0=5 oP1=4 nP1=X
 
 	DEY			; +2/70
-;        BPL	Line195To207	; Taken: +3/73
-	; 5 cycles
+	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
+				; Not taken +2/72
 
-	STA	_TIA_WSYNC	; ?8 / 76 - end active line 195-208
+	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
 
-	.repend
-	LDA	#$FF		; +2 / 2
-	STA	_TIA_PF1	; +3 / 5
-	STA	_TIA_PF2	; +3 / 8
-        LDA	#$0
-        STA	_TIA_GRP0
-        STA	_TIA_GRP1
-        STA	_TIA_GRP0
-	STA	_TIA_WSYNC	; end active line 209
-	STA	_TIA_WSYNC	; end active line 210
-	STA	_TIA_WSYNC	; end active line 211
+; Clean up playfield
+	LDA	#$FF		; +2/2
+	STA	_TIA_PF1	; +3/5
+	STA	_TIA_PF2	; +3/8
+; Clean up sprites
+	LDA	#$0		; +2/10
+        STA	_TIA_GRP0	; +3/13
+        STA	_TIA_GRP1	; +3/16
+        STA	_TIA_GRP0	; +3/19
+	STA	_TIA_WSYNC	; +3/(22..76) - end active line 209
+
+	STA	_TIA_WSYNC	; +3/(3..76) end active line 210
+	STA	_TIA_WSYNC	; +3/(3..76) end active line 211
 
 ; -------------------------------
 ; Technically beginning of Overscan line 1.
 ; The overhead of JMP is not an issue since we have plenty of time
 ; to turn off Vblank before the first pixels of the screen.
 
-	JMP	MainLoop	; +3 / 10
+	JMP	MainLoop	; +3/3
 
+	.org	$F100
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
 ; ........ ........ ........ ........ ........
