@@ -403,9 +403,10 @@ Lines:
         JMP	Line195To207	; +3/5
 
 	.align	$100,$EA	; $EA is NOP
-	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
-
 Line195To207:
+	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
+        			; +3/76 - end active line 195-207
+
 ; Active lines 195-208
 ; Set raster palette for signature bar
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
@@ -438,20 +439,18 @@ Line195To207:
 	LDX	Logo4,Y		; +4/51
 	LDA	Logo5,Y		; +4/55
 
-	; begin 7-cycle NOP
-	PHP			; +3/58
-	PLP			; +4/62
-	; end 7-cycle NOP
+	NOP			; +2/57
+	NOP			; +2/59
+	DEY			; +2/61 - flags untouched by store instructions
 
-	STX	_TIA_GRP1	; +3/65 COL=195 PIX=127 - oP0=3 nP0=3 oP1=2 nP1=4
-	STA	_TIA_GRP0	; +3/68 COL=204 PIX=136 - oP0=3 nP0=5 oP1=4 nP1=4
-	STY	_TIA_GRP1	; +3/71 COL=213 PIX=145 - oP0=5 nP0=5 oP1=4 nP1=X
+	STX	_TIA_GRP1	; +3/64 COL=192 PIX=124 - oP0=3 nP0=3 oP1=2 nP1=4
+	STA	_TIA_GRP0	; +3/67 COL=201 PIX=133 - oP0=3 nP0=5 oP1=4 nP1=4
+	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142 - oP0=5 nP0=5 oP1=4 nP1=X
 
-	DEY			; +2/73
-	BPL	Line195To207	; Taken: +3/76 - MUST NOT CROSS PAGE BOUNDARY
-				; Not taken +2/75
+	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
+				; Not taken +2/72
 
-;	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
+	STA	_TIA_WSYNC	; +3/(75..76) - end active line 208
 
 ; Clean up playfield
 	LDA	#$FF		; +2/2
