@@ -540,46 +540,66 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 				; Not taken +2/72
 
 	STA	_TIA_WSYNC	; +3/(75..76)
-; End active line 208
+; End active line 208		;
+; -------------------------------
 
-; Start active line 209
-; Set palette
-	INY			; +2/2
+; -------------------------------
+; Start active line 209		;
+;				;
+; Clean up after the 40-pixel sprite: plain playfield, empty sprites
+				;
+; Set "background" color for this line (actually playfield)
+	INY			; +2/2 - Y starts as $FF
 	DEC	_ZP_SIGPAL_LO	; +5/7
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/12
 	STA	_TIA_COLUPF	; +3/15 COL=45 PIX=-23
-
-; Clean up playfield
+				;
+; Clean up playfield		;
 	LDA	#$FF		; +2/17
 	STA	_TIA_PF1	; +3/20 COL=60 PIX=-8
 	STA	_TIA_PF2	; +3/23 COL=69 PIX=1
-
-; Clean up sprites
+				;
+; Clean up sprites		;
 	LDA	#$0		; +2/25
 	STA	_TIA_GRP0	; +3/28 COL=84 PIX=16
 	STA	_TIA_GRP1	; +3/31 COL=93 PIX=25
 	STA	_TIA_GRP0	; +3/34 COL=102 PIX=34
-
+				;
 	STA	_TIA_WSYNC	; +3/(37..76) - end active line 209
-; End active line 209
+; End active line 209		;
+; -------------------------------
 
-; Start active line 210
+; -------------------------------
+; Start active line 210		;
+;				;
+; Nothing big here, everything is clean
+				;
+; Set "background" color for this line (actually playfield)
 	DEC	_ZP_SIGPAL_LO	; +5/5
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
 	STA	_TIA_WSYNC	; +3/(16..76)
-; End active line 210
+; End active line 210		;
+; -------------------------------
 
-; Start active line 211
+; -------------------------------
+; Start active line 211		;
+;				;
+; Very little, just adjust color pointer back when done
+				;
+; Set "background" color for this line (actually playfield)
 	DEC	_ZP_SIGPAL_LO	; +5/5
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
 	LDA	_ZP_SIGPAL_LO	; +3/16
+				;
+; Adjust color pointer back	;
 	CLC			; +2/18
 	ADC	#3		; +2/20
 	STA	_ZP_SIGPAL_LO	; +2/22
 	STA	_TIA_WSYNC	; +3/(25..76)
-; End active line 211
+; End active line 211		;
+; -------------------------------
 
 ; -------------------------------
 ; Technically beginning of Overscan line 1.
