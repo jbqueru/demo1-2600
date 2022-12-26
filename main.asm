@@ -145,6 +145,7 @@ Main:
 	TXS			; Set stack pointer
 
 ; Clear zero-page (TIA + RAM)
+; TODO: be more precise, to avoid registers that might exist on the cartridge
 	INX			; X is 0
 	TXA
 ClearZeroPage:
@@ -336,9 +337,9 @@ Line7To183:
 ; Also end active line 7, 15, [+8], 183
 
 
-
-; -------------------------------
-; Active area - 212 lines total
+; ========================
+; Active - 212 lines total
+; ========================
 
 Lines:
 	LDY	#$A4		; +2/2
@@ -372,18 +373,25 @@ Lines:
 ; Write 2: PIX=132..139 COL=200..207 CPU=67..69
 ; Write 3: PIX=140..147 COL=208..215 CPU=70..71
 
-; Start active line 192
-
-; Set things up for signature
-; Set all colors to be the same - everything is invisible
+; -------------------------------
+; Start active line 192		;
+;				;
+; Set things up for signature	;
+; Make no assumption about the state of the TIA, so that we can display
+; the signature underneath any effect without interference.
+;				;
+; This line prinarily clears the palette, the graphics, and sets the
+; sprites' horizontal position.	;
+				;
+; Set all colors to match the "background" - everything is invisible
 	LDY	#17		; +2/2 - 3 lines above + 14 lines of bitmap
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/7
 	STA	_TIA_COLUBK	; +3/10 COL=30 PIX=-38
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
 	STA	_TIA_COLUP0	; +3/16 COL=48 PIX=-20
 	STA	_TIA_COLUP1	; +3/19 COL=57 PIX=-11 - early enough
-
-; Disable all graphics
+				;
+; Disable all graphics		;
 	LDA	#$0		; +2/21
 	STA	_TIA_GRP0	; +3/24 - oP0=X nP0=0 oP1=X nP1=X
 	STA	_TIA_GRP1	; +3/27 - oP0=0 nP0=0 oP1=X nP1=0
@@ -391,56 +399,61 @@ Lines:
 	STA	_TIA_ENAM0	; +3/33
 	STA	_TIA_ENAM1	; +3/36
 	STA	_TIA_ENABL	; +3/39
-
-; Sprite reflection off
+				;
+; Sprite reflection off		;
 	STA	_TIA_REFP0	; +3/42
 	STA	_TIA_REFP1	; +3/45
-
-	; begin 10-cycle NOP
+				;
+	; begin 10-cycle NOP	;
 	PHP			; +3/48
         BIT	0		; +3/51
 	PLP			; +4/55
-	; end 10-cycle NOP
-
+	; end 10-cycle NOP	;
+				;
 ; Player 0 move 1 pixel to the left (clock 74 trick flips top bit)
 	LDA	#$90		; +2/57
-
+				;
 	; Interleave set approximate sprite positions
 	STA	_TIA_RESP0	; +3/60 COL=171 SPR=108
 	STA	_TIA_RESP1	; +3/63 COL=180 SPR=117
-
+				;
 	STA	_TIA_HMP0	; +3/66
 ; Player 1 move 2 pixels to the left (clock 74 trick flips top bit)
 	LDA	#$A0		; +2/68
 	STA	_TIA_HMP1	; +3/71
-
+				;
 ; Trigger HMOVE on clock 74 (magic trick)
 	STA	_TIA_HMOVE	; +3/74
 	DEY			; +2/76
-; No WSYNC, perfect sync
-; End active line 192
+; No WSYNC, perfect sync	;
+; End active line 192		;
+; -------------------------------
 
-; Start Active line 193
-
-; Set raster palette
+; -------------------------------
+; Start Active line 193		;
+;				;
+; This line primarily sets the palette, the playfield, the sprite repeat
+; and sets the sprite delay (saves 1 precious CPU register)
+				;
+; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
 	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
-; Set a solid playfield
+; Set a solid playfield		;
 	LDA	#$FF		; +2/10
 	STA	_TIA_PF0	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF1	; +3/16 COL=48 PIX=-20
 	STA	_TIA_PF2	; +3/19 COL=57 PIX=-11
-
+				;
 ; Set palette for background and players
 	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/21
 	STA	_TIA_COLUBK	; +3/24
 	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2/26
 	STA	_TIA_COLUP0	; +3/29
 	STA	_TIA_COLUP1	; +3/32
-
+				;
 ; Reset horizontal move registers
 	STA	_TIA_HMCLR	; +3/35
-
+				;
 ; Setup sprite repeat / sprite delay (common bit 0)
 	LDA	#$3		; +2/37
 	STA	_TIA_NUSIZ0	; +3/30
@@ -450,22 +463,38 @@ Lines:
 	STA	_TIA_VDELP1	; +3/51
 	DEY			; +2/53
 	STA	_TIA_WSYNC	; +3/(56..76)
-; End active line 193
+; End active line 193		;
+; -------------------------------
 
-; Start active line 194
-; Set raster palette
+; -------------------------------
+; Start active line 194		;
+;				;
+; Nothing groundbreaking here, everything is already set up
+				;
+; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
 	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 	DEY			; +2/10
 	JMP	Line195To207	; +3/13
-
+				;
 	.align	$100,$EA	; $EA is NOP
-Line195To207:
-	STA	_TIA_WSYNC	; +3/(2..76) - end active line 194
-        			; +3/76 - end active line 195-207
+Line195To207:			; Steal that WSYNC as end of subsequent lines
+	STA	_TIA_WSYNC	; +3/(16..76) when falling through
+        			; +3/76 when jumped to (no margin)
+				;
+; End active line 194		;
+; -------------------------------
 
-; Active lines 195-208
-; Set raster palette for signature bar
+; -------------------------------
+; Start active line 195-208	;
+;
+; This is the core of the signature bar, with palette change, 40-pixel sprite,
+; and split playfield.
+;
+; Note that the line counter (register Y) is intentionally off by one,
+; counting from 14 to 1 (instead of a more intuitive 13 to 0)
+;
+; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
 	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
 
@@ -475,11 +504,14 @@ Line195To207:
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 
 	LDA	Logo1 - 1,Y	; +4/20
-	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1 - oP0=X nP0=1 oP1=X nP1=X
+	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1
+				;	oP0=X nP0=1 oP1=X nP1=X
 	LDA	Logo2 - 1,Y	; +4/27
-	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22 - oP0=1 nP0=1 oP1=X nP1=2
+	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22
+				;	oP0=1 nP0=1 oP1=X nP1=2
 	LDA	Logo3 - 1,Y	; +4/34
-	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43 - oP0=1 nP0=3 oP1=2 nP1=2
+	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43
+				;	oP0=1 nP0=3 oP1=2 nP1=2
 
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
 ; update PF2 between 48 (theo) / 47 (actual) and 64
@@ -500,9 +532,12 @@ Line195To207:
 	NOP			; +2/59
 	DEY			; +2/61 - flags untouched by store instructions
 
-	STX	_TIA_GRP1	; +3/64 COL=192 PIX=124 - oP0=3 nP0=3 oP1=2 nP1=4
-	STA	_TIA_GRP0	; +3/67 COL=201 PIX=133 - oP0=3 nP0=5 oP1=4 nP1=4
-	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142 - oP0=5 nP0=5 oP1=4 nP1=X
+	STX	_TIA_GRP1	; +3/64 COL=192 PIX=124
+				;	P0=3 nP0=3 oP1=2 nP1=4
+	STA	_TIA_GRP0	; +3/67 COL=201 PIX=133
+				;	oP0=3 nP0=5 oP1=4 nP1=4
+	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142
+					;oP0=5 nP0=5 oP1=4 nP1=X
 
 	BNE	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
 				; Not taken +2/72
@@ -560,14 +595,6 @@ Rts12:	RTS
 ;	.byte	0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
-
-; xxxxxxxx xxxxxxx. ...x.x.x ....xxxx xxxxxxxx
-; xxx.x... xxx..xx. ...x.x.x ....x.xx x.x...xx
-; xxx.x.xx .x.xx.x. ...x.x.x ....x..x ..x.xx.x
-; xxx.x... xx.xx.x. ...x.x.x ....x.x. x.x...xx
-; xxx.x.xx .x.xx.x. ...x.x.x ....x.xx x.x.xx.x
-; x..xx... xxx...x. ..x..x.. x...x.xx x.x...xx
-; xxxxxxxx xxxxxxx. xx...x.. .xx.xxxx xxxxxxxx
 
 Logo1:
 	.byte	%11111111
@@ -650,9 +677,9 @@ Logo5:
 	.byte	%11111111
 
 Colors1:
-	.byte	$48,$0A,$88
-        .byte	$12,$14,$16,$18,$1A,$1C,$1E,$1E,$1C,$1A,$18,$16,$14,$12
-        .byte	$88,$0A,$48
+	.byte	$12,$12,$14
+        .byte	$14,$14,$14,$16,$16,$16,$16,$16,$16,$16,$16,$14,$14,$14
+        .byte	$14,$12,$12
 
 ; Reset / Start vectors
 	.org	$FFFC
