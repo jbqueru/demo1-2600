@@ -17,17 +17,45 @@
 ; -------------------------------
 ; TIA registers
 
-_TIA_VSYNC	.equ	$00
-_TIA_VBLANK	.equ	$01
-_TIA_WSYNC	.equ	$02
-;_TIA_RSYNC	.equ	$03
-_TIA_NUSIZ0	.equ	$04
-_TIA_NUSIZ1	.equ	$05
-_TIA_COLUP0	.equ	$06
-_TIA_COLUP1	.equ	$07
-_TIA_COLUPF	.equ	$08
-_TIA_COLUBK	.equ	$09
-_TIA_CTRLPF	.equ	$0A
+_TIA_VSYNC	.equ	$00	; ......s.
+				;       |
+                                ;       +-- 1 = vsync on
+
+_TIA_VBLANK	.equ	$01	; gl....b.
+				; ||    |
+				; ||    +-- 1 = vblank on
+				; |+------- 1 = latch I4/I5 (joystick buttons)
+                                ; +-------- 1 = ground I0..I3 (paddle pots)
+
+_TIA_WSYNC	.equ	$02	; ........  write = wait for end of next line
+
+;_TIA_RSYNC	.equ	$03	; ........  write = reset horizontal counter
+
+_TIA_NUSIZ0	.equ	$04	; ..ss.nnn
+				;   || |||
+				;   || +++- 101 = double-width
+				;   || +++- 111 = quad-width
+				;   || |||
+				;   || ||+- 1 = close sprite
+				;   || |+-- 1 = medium sprite
+				;   || +--- 1 = wide sprite
+                                ;   ++----- missile width = 1 << ss
+
+_TIA_NUSIZ1	.equ	$05	; see _TIA_NUSIZ0
+
+_TIA_COLUP0	.equ	$06	; cccclll.
+				; |||||||
+				; ||||+++-- luminance
+				; ++++----- color (0 = grey, 1..15 colors)
+
+_TIA_COLUP1	.equ	$07	; see _TIA_COLUP0
+
+_TIA_COLUPF	.equ	$08	; see _TIA_COLUP0
+
+_TIA_COLUBK	.equ	$09	; see _TIA_COLUP0
+
+_TIA_CTRLPF	.equ	$0A	; see _TIA_COLUP0
+
 _TIA_REFP0	.equ	$0B
 _TIA_REFP1	.equ	$0C
 _TIA_PF0	.equ	$0D
@@ -341,13 +369,39 @@ Line7To183:
 ; Active - 212 lines total
 ; ========================
 
-Lines:
 	LDY	#$A4		; +2/2
 	STY	_TIA_COLUBK	; +3/5
+
+	PHP
+	PLP
+	PHP
+	PLP
+        NOP
+        NOP
+	LDX	#$1C
+	STX	_TIA_COLUBK
+	LDX	#$A4
+	STX	_TIA_COLUBK
+	LDX	#$1C
+	STX.w	_TIA_COLUBK
+	LDX	#$A4
+	STX	_TIA_COLUBK
+	LDX	#$1C
+	STX	_TIA_COLUBK
+	LDX	#$A4
+	STX.w	_TIA_COLUBK
+	LDX	#$1C
+	STX	_TIA_COLUBK
+	LDX	#$A4
+	STX	_TIA_COLUBK
+	LDX	#$1C
+	STX.w	_TIA_COLUBK
 
 	.repeat	7
 	STA	_TIA_WSYNC	; +3/(8..76) - end of line 8*n
 				; +3/(3..76) - end of line 8*n + 1..6
+	LDX	#$A4
+	STX	_TIA_COLUBK
 	.repend
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BNE	Line7To183	; taken: +3/8 + page boundary
