@@ -365,20 +365,21 @@ Lines:
 ; The signature is an overlap of 3 techniques:
 ; * a 40-pixel sprite, quite far to the right of the screen
 ; * 2 opaque colors for the sprite, distinct from the actual background,
-;       implemented with the playfield (as implemented, the playfield
-;       actually surrounds the sprite).
+;       where 1 color is the playfield (black) and the other is the players
+;	(white for both).
 ; * Per-line color changes for the background.
-; 
-; The sprite is displayed at 116..155, with 1 playfield pixel to the right
 ;
-; P0 at 116, P1 at 124
-; SPR=117 COL=180 CPU=60
-; SPR=126 COL=189 CPU=63
+; The sprite is at the rightmost position that still shows some background
+;     to the right, i.e. pixels 116..155.
+; The matching positions are 116 for P0 and 124 for P1
+; Those get set (approximately) at the following CPU cycles:
+; * SPR=117 COL=180 CPU=60
+; * SPR=126 COL=189 CPU=63
 ;
-; Timing to write the pixel data:
-; Write 1: PIX=124..131 COL=192..199 CPU=64..66
-; Write 2: PIX=132..139 COL=200..207 CPU=67..69
-; Write 3: PIX=140..147 COL=208..215 CPU=70..71
+; The timing to write the pixel data while the sprites are displayed:
+; * Write 1: PIX=124..131 COL=192..199 CPU=64..66
+; * Write 2: PIX=132..139 COL=200..207 CPU=67..69
+; * Write 3: PIX=140..147 COL=208..215 CPU=70..71
 
 ; -------------------------------
 ; Start active line 192		;
@@ -444,16 +445,16 @@ Lines:
 				;
 ; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
-	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 ; Set a solid playfield		;
-	LDA	#$FF		; +2/10
+	LDA	#$0		; +2/10
 	STA	_TIA_PF0	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF1	; +3/16 COL=48 PIX=-20
 	STA	_TIA_PF2	; +3/19 COL=57 PIX=-11
 				;
 ; Set palette for background and players
 	LDA	#_TIA_CO_GRAY + _TIA_LU_MIN	; +2/21
-	STA	_TIA_COLUBK	; +3/24
+	STA	_TIA_COLUPF	; +3/24
 	LDA	#_TIA_CO_GRAY + _TIA_LU_LIGHT	; +2/26
 	STA	_TIA_COLUP0	; +3/29
 	STA	_TIA_COLUP1	; +3/32
@@ -480,7 +481,7 @@ Lines:
 				;
 ; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
-	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 	DEY			; +2/10
 	JMP	Line195To207	; +3/13
 				;
@@ -500,10 +501,10 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 				;
 ; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
-	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 				;
 ; Reset playfield, filled	;
-	LDA	#$FF		; +2/10
+	LDA	#$0		; +2/10
 	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 				;
@@ -525,9 +526,9 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Difference between theo and actual is because top 3 bits
 ; are identical between $FF and $E0, so we can change while
 ; those bits are getting displayed
-	LDA	#$F8		; +2/39
+	LDA	#$07		; +2/39
 	STA	_TIA_PF1	; +3/42 COL=126 PIX=58
-	LDA	#$80		; +2/44
+	LDA	#$7F		; +2/44
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 				;
 ; Load sprite data for last 2 columns
@@ -562,20 +563,21 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	INY			; +2/2 - Y starts as $FF
 	DEC	_ZP_SIGPAL_LO	; +5/7
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/12
-	STA	_TIA_COLUPF	; +3/15 COL=45 PIX=-23
+	STA	_TIA_COLUBK	; +3/15 COL=45 PIX=-23
 				;
-; Clean up playfield		;
-	LDA	#$FF		; +2/17
+; Clean up playfield and sprites;
+	LDA	#$0		; +2/17
 	STA	_TIA_PF1	; +3/20 COL=60 PIX=-8
 	STA	_TIA_PF2	; +3/23 COL=69 PIX=1
 				;
-; Clean up sprites		;
-	LDA	#$0		; +2/25
-	STA	_TIA_GRP0	; +3/28 COL=84 PIX=16
-	STA	_TIA_GRP1	; +3/31 COL=93 PIX=25
-	STA	_TIA_GRP0	; +3/34 COL=102 PIX=34
+	STA	_TIA_GRP0	; +3/26 COL=78 PIX=10
+				;	oP0=X nP0=0 oP1=X nP1=X
+	STA	_TIA_GRP1	; +3/29 COL=85 PIX=19
+				;	oP0=0 nP0=0 oP1=X nP1=0
+	STA	_TIA_GRP0	; +3/31 COL=94 PIX=28
+				;	oP0=0 nP0=0 oP1=0 nP1=0
 				;
-	STA	_TIA_WSYNC	; +3/(37..76) - end active line 209
+	STA	_TIA_WSYNC	; +3/(34..76) - end active line 209
 ; End active line 209		;
 ; -------------------------------
 
@@ -587,7 +589,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Set "background" color for this line (actually playfield)
 	DEC	_ZP_SIGPAL_LO	; +5/5
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
-	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
+	STA	_TIA_COLUBK	; +3/13 COL=39 PIX=-29
 	STA	_TIA_WSYNC	; +3/(16..76)
 ; End active line 210		;
 ; -------------------------------
@@ -600,7 +602,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Set "background" color for this line (actually playfield)
 	DEC	_ZP_SIGPAL_LO	; +5/5
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
-	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
+	STA	_TIA_COLUBK	; +3/13 COL=39 PIX=-29
 	LDA	_ZP_SIGPAL_LO	; +3/16
 				;
 ; Adjust color pointer back	;
