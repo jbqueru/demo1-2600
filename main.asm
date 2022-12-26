@@ -154,7 +154,7 @@ ClearZeroPage:
 	BNE	ClearZeroPage
 
 ; Set color pointer for signature background
-; It's off-by-three because the index primary counts lines in the sprite
+; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
 ; (i.e. at addresses before that of line 0).
 	LDA	#(Colors1 + 3) & $FF
@@ -170,7 +170,6 @@ ClearZeroPage:
 ; ##############################
 ; ##############################
 
-MainLoop:			; +3/3 from the JMP that gets here
 
 ; =========================
 ; Overscan - 17 lines total
@@ -178,6 +177,7 @@ MainLoop:			; +3/3 from the JMP that gets here
 
 ; -------------------------------
 ; Start overscan line 0		;
+MainLoop:			; +3/3 from the JMP that gets here
 	LDA	#2		; +2/5
 	STA	_TIA_VBLANK	; +3/8 - turn blank on
 				;
@@ -343,7 +343,7 @@ Line7To183:
 
 Lines:
 	LDY	#$A4		; +2/2
-	STY	_TIA_COLUPF	; +3/5
+	STY	_TIA_COLUBK	; +3/5
 
 	.repeat	7
 	STA	_TIA_WSYNC	; +3/(8..76) - end of line 8*n
@@ -367,7 +367,7 @@ Lines:
 ; * 2 opaque colors for the sprite, distinct from the actual background,
 ;       where 1 color is the playfield (black) and the other is the players
 ;	(white for both).
-; * Per-line color changes for the background.
+; * Per-line color changes for the background, with variable address.
 ;
 ; The sprite is at the rightmost position that still shows some background
 ;     to the right, i.e. pixels 116..155.
@@ -614,18 +614,12 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; -------------------------------
 
 ; -------------------------------
-; Technically beginning of Overscan line 1.
-; The overhead of JMP is not an issue since we have plenty of time
-; to turn off Vblank before the first pixels of the screen.
-
+; Start overscan line 0		;
 	JMP	MainLoop	; +3/3
+; Continue overscan line 0 up	;
+; -------------------------------
 
-
-; A naked RTS, allowing for a 12-clock delay with a JSR here
-Rts12:	RTS
-
-;	.align	$100,0
-;	.byte	0
+	.align	$100,0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
 
