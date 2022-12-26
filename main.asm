@@ -154,12 +154,12 @@ ClearZeroPage:
 	BNE	ClearZeroPage
 
 ; Set color pointer for signature background
-; It's off-by-two for programming convenience, where the 20 lines
-; in the signature area are counted from 17 to -2 (technically to 0,
-; with the last two steps done by hand).
-	LDA	#(Colors1 + 2) & $FF
+; It's off-by-three because the index primary counts lines in the sprite
+; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
+; (i.e. at addresses before that of line 0).
+	LDA	#(Colors1 + 3) & $FF
 	STA	_ZP_SIGPAL_LO
-	LDA	#(Colors1 + 2) >> 8
+	LDA	#(Colors1 + 3) >> 8
 	STA	_ZP_SIGPAL_HI
 
 ; ##############################
@@ -384,7 +384,7 @@ Lines:
 ; sprites' horizontal position.	;
 				;
 ; Set all colors to match the "background" - everything is invisible
-	LDY	#17		; +2/2 - 3 lines above + 14 lines of bitmap
+	LDY	#16		; +2/2 - 3 lines above + 14 lines of bitmap
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/7
 	STA	_TIA_COLUBK	; +3/10 COL=30 PIX=-38
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
@@ -491,9 +491,6 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; This is the core of the signature bar, with palette change, 40-pixel sprite,
 ; and split playfield.
 ;
-; Note that the line counter (register Y) is intentionally off by one,
-; counting from 14 to 1 (instead of a more intuitive 13 to 0)
-;
 ; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
 	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
@@ -503,13 +500,13 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 
-	LDA	Logo1 - 1,Y	; +4/20
+	LDA	Logo1,Y		; +4/20
 	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1
 				;	oP0=X nP0=1 oP1=X nP1=X
-	LDA	Logo2 - 1,Y	; +4/27
+	LDA	Logo2,Y		; +4/27
 	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22
 				;	oP0=1 nP0=1 oP1=X nP1=2
-	LDA	Logo3 - 1,Y	; +4/34
+	LDA	Logo3,Y		; +4/34
 	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43
 				;	oP0=1 nP0=3 oP1=2 nP1=2
 
@@ -525,8 +522,8 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	LDA	#$80		; +2/44
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 
-	LDX	Logo4 - 1,Y	; +4/51
-	LDA	Logo5 - 1,Y	; +4/55
+	LDX	Logo4,Y		; +4/51
+	LDA	Logo5,Y		; +4/55
 
 	NOP			; +2/57
 	NOP			; +2/59
@@ -539,7 +536,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142
 					;oP0=5 nP0=5 oP1=4 nP1=X
 
-	BNE	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
+	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
 				; Not taken +2/72
 
 	STA	_TIA_WSYNC	; +3/(75..76)
@@ -547,21 +544,23 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 
 ; Start active line 209
 ; Set palette
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
-	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	INY			; +2/2
+	DEC	_ZP_SIGPAL_LO	; +5/7
+	LDA	(_ZP_SIGPAL_LO),Y	; +5/12
+	STA	_TIA_COLUPF	; +3/15 COL=45 PIX=-23
 
 ; Clean up playfield
-	LDA	#$FF		; +2/10
-	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
-	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
+	LDA	#$FF		; +2/17
+	STA	_TIA_PF1	; +3/20 COL=60 PIX=-8
+	STA	_TIA_PF2	; +3/23 COL=69 PIX=1
 
 ; Clean up sprites
-	LDA	#$0		; +2/18
-	STA	_TIA_GRP0	; +3/21 COL=63 PIX=-5
-	STA	_TIA_GRP1	; +3/24 COL=72 PIX=4
-	STA	_TIA_GRP0	; +3/27 COL=81 PIX=13
+	LDA	#$0		; +2/25
+	STA	_TIA_GRP0	; +3/28 COL=84 PIX=16
+	STA	_TIA_GRP1	; +3/31 COL=93 PIX=25
+	STA	_TIA_GRP0	; +3/34 COL=102 PIX=34
 
-	STA	_TIA_WSYNC	; +3/(30..76) - end active line 209
+	STA	_TIA_WSYNC	; +3/(37..76) - end active line 209
 ; End active line 209
 
 ; Start active line 210
@@ -575,9 +574,11 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	DEC	_ZP_SIGPAL_LO	; +5/5
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
-	INC	_ZP_SIGPAL_LO	; +5/18
-	INC	_ZP_SIGPAL_LO	; +5/23
-	STA	_TIA_WSYNC	; +3/(26..76)
+	LDA	_ZP_SIGPAL_LO	; +3/16
+	CLC			; +2/18
+	ADC	#3		; +2/20
+	STA	_ZP_SIGPAL_LO	; +2/22
+	STA	_TIA_WSYNC	; +3/(25..76)
 ; End active line 211
 
 ; -------------------------------
