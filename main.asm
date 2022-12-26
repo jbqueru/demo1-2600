@@ -356,12 +356,19 @@ Lines:
 ; 
 ; -------------------------------
 
-; ###################################
-; #                                 #
-; #  40-pixel sprite for signature  #
-; #                                 #
-; ###################################
+; ######################
+; #                    #
+; #  Bottom signature  #
+; #                    #
+; ######################
 ;
+; The signature is an overlap of 3 techniques:
+; * a 40-pixel sprite, quite far to the right of the screen
+; * 2 opaque colors for the sprite, distinct from the actual background,
+;       implemented with the playfield (as implemented, the playfield
+;       actually surrounds the sprite).
+; * Per-line color changes for the background.
+; 
 ; The sprite is displayed at 116..155, with 1 playfield pixel to the right
 ;
 ; P0 at 116, P1 at 124
@@ -487,19 +494,20 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 
 ; -------------------------------
 ; Start active line 195-208	;
-;
+;				;
 ; This is the core of the signature bar, with palette change, 40-pixel sprite,
-; and split playfield.
-;
+; and split playfield.		;
+				;
 ; Set "background" color for this line (actually playfield)
 	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
 	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
-
-; Reset playfield, filled
+				;
+; Reset playfield, filled	;
 	LDA	#$FF		; +2/10
 	STA	_TIA_PF1	; +3/13 COL=39 PIX=-29
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
-
+				;
+; Set the first 3 columns of sprite data
 	LDA	Logo1,Y		; +4/20
 	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1
 				;	oP0=X nP0=1 oP1=X nP1=X
@@ -509,7 +517,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	LDA	Logo3,Y		; +4/34
 	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43
 				;	oP0=1 nP0=3 oP1=2 nP1=2
-
+				;
 ; update PF1 between 37 and 53 (theo) / 57 (actual)
 ; update PF2 between 48 (theo) / 47 (actual) and 64
 ; PF2 works at 44 on my emulator, but there seem to be
@@ -521,24 +529,26 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF1	; +3/42 COL=126 PIX=58
 	LDA	#$80		; +2/44
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
-
+				;
+; Load sprite data for last 2 columns
 	LDX	Logo4,Y		; +4/51
 	LDA	Logo5,Y		; +4/55
-
+				;
 	NOP			; +2/57
 	NOP			; +2/59
 	DEY			; +2/61 - flags untouched by store instructions
-
+				;
 	STX	_TIA_GRP1	; +3/64 COL=192 PIX=124
 				;	P0=3 nP0=3 oP1=2 nP1=4
 	STA	_TIA_GRP0	; +3/67 COL=201 PIX=133
 				;	oP0=3 nP0=5 oP1=4 nP1=4
 	STY	_TIA_GRP1	; +3/70 COL=210 PIX=142
-					;oP0=5 nP0=5 oP1=4 nP1=X
-
+				;	oP0=5 nP0=5 oP1=4 nP1=X
+				;
 	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
+				; WSYNC is borrowed from previous code block
 				; Not taken +2/72
-
+				;
 	STA	_TIA_WSYNC	; +3/(75..76)
 ; End active line 208		;
 ; -------------------------------
