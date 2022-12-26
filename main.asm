@@ -154,6 +154,9 @@ _ZP_LINE_COUNT	.equ	$80
 _ZP_SIGPAL_LO	.equ	$81
 _ZP_SIGPAL_HI	.equ	$82
 
+_ZP_BARGFX_LO	.equ	$83
+_ZP_BARGFX_HI	.equ	$84
+
 ; ########################
 ; ########################
 ; ###                  ###
@@ -185,10 +188,15 @@ ClearZeroPage:
 ; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
 ; (i.e. at addresses before that of line 0).
-	LDA	#(Colors1 + 3) & $FF
+	LDA	#(Colors1 + 3 & $FF)
 	STA	_ZP_SIGPAL_LO
-	LDA	#(Colors1 + 3) >> 8
+	LDA	#(Colors1 + 3 >> 8)
 	STA	_ZP_SIGPAL_HI
+
+	LDA	#(Logo1 & $FF)
+        STA	_ZP_BARGFX_LO
+	LDA	#(Logo1 >> 8)
+        STA	_ZP_BARGFX_HI
 
 ; ##############################
 ; ##############################
@@ -369,40 +377,93 @@ Line7To183:
 ; Active - 212 lines total
 ; ========================
 
-	LDY	#$A4		; +2/2
-	STY	_TIA_COLUBK	; +3/5
+; update playfields: 6 writes
+; update palette: 4 writes
 
-	PHP
-	PLP
-	PHP
-	PLP
-        NOP
-        NOP
-	LDX	#$1C
-	STX	_TIA_COLUBK
-	LDX	#$A4
-	STX	_TIA_COLUBK
-	LDX	#$1C
-	STX.w	_TIA_COLUBK
-	LDX	#$A4
-	STX	_TIA_COLUBK
-	LDX	#$1C
-	STX	_TIA_COLUBK
-	LDX	#$A4
-	STX.w	_TIA_COLUBK
-	LDX	#$1C
-	STX	_TIA_COLUBK
-	LDX	#$A4
-	STX	_TIA_COLUBK
-	LDX	#$1C
-	STX.w	_TIA_COLUBK
+
+; Naive approach, 62 cycles
+
+; small palette updates 14 cycles
+;	LDA	Pal1,Y		; 4
+;	STA	_TIA_COLUBK	; 3
+;	LDA	Pal2,Y		; 4
+;	STA	_TIA_COLUPF	; 3
+
+; playfield updates 48 cycles
+;	LDA	(PF0L),Y	; 5
+;	STA	_TIA_PF0	; 3
+;	LDA	(PF1L),Y	; 5
+;	STA	_TIA_PF1	; 3
+;	LDA	(PF2L),Y	; 5
+;	STA	_TIA_PF2	; 3
+;	LDA	(PF0R),Y	; 5
+;	STA	_TIA_PF0	; 3
+;	LDA	(PF1R),Y	; 5
+;	STA	_TIA_PF1	; 3
+;	LDA	(PF2R),Y	; 5
+;	STA	_TIA_PF2	; 3
+
+; Optimizations
+
+; playfield only 1 moves 38 cycles
+;	LDA	ZP,Y		; 3
+;	STA	_TIA_PF0	; 3
+;	LDA	ZP,Y		; 3
+;	STA	_TIA_PF1	; 3
+;	LDA	ZP,Y		; 3
+;	STA	_TIA_PF2	; 3
+;	LDA	ZP,Y		; 3
+;	STA	_TIA_PF0	; 3
+;	LDA	ZP,Y		; 3
+;	STA	_TIA_PF1	; 3
+;	LDA	(PF2R),Y	; 5
+;	STA	_TIA_PF2	; 3
+
+; large palette updates 24 cycles
+;	LDA	Pal1,Y		; 4
+;	STA	_TIA_COLUBK	; 3
+;	LDA	Pal2,Y		; 4
+;	STA	_TIA_COLUPF	; 3
+;	LDA	Pal3,Y		; 4
+;	STA	_TIA_COLUP0	; 3
+;	STA	_TIA_COLUP1	; 3
+
+; extra palette updates 16/17 cycles
+;	LDA	Pal1A,Y		; 4
+;	LDX	Pal1B,Y		; 4
+;	STA	_TIA_COLUBK	; 3
+;	NOP			; 2
+;	STX	_TIA_COLUBK	; 3
+
+
+	LDA	Pal1,Y		; +4/4
+	STA	_TIA_COLUBK	; +3/7
+	LDA	Pal2,Y		; +4/11
+	STA	_TIA_COLUPF	; +3/14
+
+	LDA	(_ZP_BARGFX_LO),Y	; +5/19
+        STA	_TIA_PF0	; +3/22 MIN=-23/*53 MAX=21 (!!!)
+	LDA	(_ZP_BARGFX_LO),Y	; +5/27
+        STA	_TIA_PF1	; +3/30 MIN=-12/*64 MAX=27 (!!!)
+	LDA	(_ZP_BARGFX_LO),Y	; +5/35
+        STA	_TIA_PF2	; +3/38 MIN=-1/*75 MAX=37 (!!!)
+	LDA	(_ZP_BARGFX_LO),Y	; +5/43
+        STA	_TIA_PF0	; +3/46 MIN=27 MAX=48
+	LDA	(_ZP_BARGFX_LO),Y	; +5/51
+        STA	_TIA_PF1	; +3/54 MIN=37 MAX=53 (!!!)
+	LDA	(_ZP_BARGFX_LO),Y	; +5/59
+        STA	_TIA_PF2	; +3/62 MIN=48 MAX=64
+
+	LDA	Pal1,Y		; +4/66
+	STA	_TIA_COLUP0	; +3/69
+	STA	_TIA_COLUP1	; +3/72
+
+	; DEC + BNE		; +5/77 (!!!?!)
 
 	.repeat	7
-	STA	_TIA_WSYNC	; +3/(8..76) - end of line 8*n
-				; +3/(3..76) - end of line 8*n + 1..6
-	LDX	#$A4
-	STX	_TIA_COLUBK
+	STA	_TIA_WSYNC
 	.repend
+        INY
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BNE	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
@@ -761,6 +822,16 @@ Colors1:
 	.byte	$12,$12,$14
         .byte	$14,$14,$14,$16,$16,$16,$16,$16,$16,$16,$16,$14,$14,$14
         .byte	$14,$12,$12
+
+; bar palette
+
+Pal1:
+	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
+	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
+
+Pal2:
+	.byte	$92,$96,$9A,$9E,$9E,$9A,$96,$92
+	.byte	$92,$96,$9A,$9E,$9E,$9A,$96,$92
 
 ; Reset / Start vectors
 	.org	$FFFC
