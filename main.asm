@@ -158,7 +158,7 @@ _ZP_BARGFX3	.equ	$87	; high bits at $88
 _ZP_BARGFX4	.equ	$89	; high bits at $8A
 _ZP_BARGFX5	.equ	$8B	; high bits at $8C
 _ZP_BARGFX6	.equ	$8D	; high bits at $8E
-_ZP_READLOGO	.equ	$8F
+_ZP_READ_LOGO	.equ	$8F
 
 ; ########################
 ; ########################
@@ -487,17 +487,54 @@ LinesRoller:			;
 ; -------------------------------
 ; Start active line 17, 36, 55, ... 188
 	LDA	_ZP_LINE_COUNT
-        AND	#3
-        ASL
-        ASL
-        ASL
-        ASL
-        STA	_ZP_BARGFX1
-        STA	_ZP_BARGFX2
-        STA	_ZP_BARGFX3
-        STA	_ZP_BARGFX4
-        STA	_ZP_BARGFX5
-        STA	_ZP_BARGFX6
+	AND	#3
+	ASL
+	ASL
+	ASL
+	ASL
+	STA	_ZP_BARGFX2
+
+;	LDX	_ZP_READ_LOGO	; +3		+3
+
+;	LDA	MBLogo,X	; +4
+;	TAY			; +2
+;	LSR			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX1	; +3		+13
+
+;	TYA			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX2	; +3		+7
+
+;	TYA			; +2
+;	ASL			; +2
+;	ASL			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX3	; +3		+11
+
+;	INX			; +2		+2
+
+;	LDA	MBLogo,X	; +4
+;	TAY			; +2
+;	LSR			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX4	; +3
+
+;	TYA			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX5	; +3
+
+;	TYA			; +2
+;	ASL			; +2
+;	ASL			; +2
+;	AND	#$30		; +2
+;	STA	_ZP_BARGFX6	; +3
+
+;	INX			; +2		+2
+
+;	STX	_ZP_READ_LOGO	; +3		+3
+
+				;		+72
 
 	STA	_TIA_WSYNC	;
 ; End active line 17, 36, 55, ... 188
