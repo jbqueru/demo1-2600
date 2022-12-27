@@ -392,14 +392,16 @@ TimVblank:			;
 
 ; -------------------------------
 ; Start vblank line 29		;
-	.repeat 33
-	NOP
+	.repeat 28
+	NOP			; /56
 	.repend
 
-	LDY	#15
+	LDY	#15		; /58
+        LDA	Pal1+15		; /62
 
-	LDA	#0
-	STA	_TIA_VBLANK	; turn blank off
+	LDX	Pal2+15		; /66
+        STX	_TIA_COLUP0
+	STX	_TIA_VBLANK	; /72 turn blank off
 Line7To183:			;
 	STA	_TIA_WSYNC	; +3/(75..76)
 ; End vblank line 29		;
@@ -483,6 +485,8 @@ LinesRoller:			;
 	LDX	#$4A
 	LDA	#$EA
 	LDY	#15		;
+        LDA	Pal1+15		; /62
+	LDX	Pal2+15		; /66
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BPL	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
@@ -768,10 +772,10 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; bar palette
 
 Pal1:
-	.byte	$C2,$C2,$C6,$C6,$CA,$CA,$CE,$CE,$CE,$CE,$CA,$CA,$C6,$C6,$C2,$C2
+	.byte	$C4,$C4,$C6,$C6,$CA,$CA,$CE,$CE,$CE,$CE,$CA,$CA,$C6,$C6,$C4,$C4
 
 Pal2:
-	.byte	$E,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,0,$E
+	.byte	$C,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,$C
 
 	.align	$100,0
 ; Signature
