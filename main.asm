@@ -149,6 +149,7 @@ _PIA_RTIM	.equ	$284
 
 ; -------------------------------
 ; Zero-page layout
+	seg.u	zeropage
 
 _ZP_LINE_COUNT	.equ	$80
 _ZP_SIGPAL	.equ	$81	; high bits at $82
@@ -171,6 +172,7 @@ _ZP_READ_LOGO	.equ	$8F
 ; -------------------------------
 ; Code start
 
+	.seg	rom
 	.org	$F000,$EA	; $EA is NOP
 Main:
 ; Set up CPU
@@ -244,7 +246,7 @@ TimOverscan:			;
 	CMP	_PIA_RTIM	;
 	BNE	TimOverscan	;
 				;
-	STA	_TIA_WSYNC	; +3/(?->76)
+	STA	_TIA_WSYNC	; +3/(?>76)
 ; End overscan line 16		;
 ; -------------------------------
 
@@ -256,19 +258,19 @@ TimOverscan:			;
 ; Start vsync line 0		;
 	LDA	#2		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync on
-	STA	_TIA_WSYNC	; +3/(8..76)
+	STA	_TIA_WSYNC	; +3/(8>76)
 ; End vsync line 0		;
 ; -------------------------------
 
 ; -------------------------------
 ; Start vsync line 1		;
-	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 1
+	STA	_TIA_WSYNC	; +3/(3>76) - end of vsync line 1
 ; End vsync line 1		;
 ; -------------------------------
 
 ; -------------------------------
 ; Start vsync line 2		;
-	STA	_TIA_WSYNC	; +3/(3..76) - end of vsync line 2
+	STA	_TIA_WSYNC	; +3/(3>76) - end of vsync line 2
 ; End vsync line 2		;
 ; -------------------------------
 
@@ -281,15 +283,15 @@ TimOverscan:			;
 	LDA	#0		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync off
 				;
-; Skip 26 lines. 26 lines is 26*76 = 1976 CPU cycles, i.e. 30.87*64.
-; In other words, 31 ticks of 64T is 26 lines + 6 CPU cycles.
-; Initialize timer at 32, it'll spend 64 cycles each in 31, 30... 1.
-; When it reaches 0, we've skipped 26 lines.
-; Timer is set 11 cycles into the line, fires 6 cycles after the exact
-; position, plus 6 cycles of loop jitter, well within the 73 cycles
+; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
+; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
+; Initialize timer at 35, it'll spend 64 cycles each in 34, 34... 1.
+; When it reaches 0, we've skipped 28 lines.
+; Timer is set 11 cycles into the line, fires 48 cycles after the exact
+; position, plus 6 cycles of loop jitter, within the 73 cycles
 ; before WSYNC.			;
 				;
-	LDA	#32		; +2/7 - load timer value
+	LDA	#35		; +2/7 - load timer value
 	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
 				;
 ; about 2100 cycles available here
@@ -299,8 +301,8 @@ TimVblank:			;
 	CMP	_PIA_RTIM	;
 	BNE	TimVblank	;
 				;
-	STA	_TIA_WSYNC	; +3/(?..76)
-; End vblank line 26		;
+	STA	_TIA_WSYNC	; +3/(?>76)
+; End vblank line 28		;
 ; -------------------------------
 
 ; ######################
@@ -327,9 +329,15 @@ TimVblank:			;
 ; resulting in the following layout, which allows to set color 0 early
 ; or late during the visible display:
 ; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
+;
+; Each rolling cylinder has 16 visible lines, and there's a 3-line
+; gap between each row. The code for each row has 2 empty lines for
+; preparation, 16 lines of visible display, and 1 line of cleanup.
+; With 2 extra lines below and some preparation during vblank, this
+; covers the first 192 lines of active display.
 
 ; -------------------------------
-; Start vblank line 27		;
+; Start vblank line 29		;
 ; Set up palette		;
 ; Set up sprites		;
 ;				;
@@ -377,41 +385,16 @@ TimVblank:			;
 	LDY	#9		; +2/61
 	STY	_ZP_LINE_COUNT	; +3/64
 				;
-	NOP			; +2/66
+	LDX	#0		; +2/66
 				;
 	; Interleave set M1 position
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
 				;
-	STA	_TIA_WSYNC	; +3/(72..76)
-; End vblank line 27		;
-; -------------------------------
+	STX	_TIA_VBLANK	; +3/72 turn blank off - as late as possible
 
-; -------------------------------
-; Start vblank line 28		;
-	STA	_TIA_WSYNC	; +3/(3..76)
-; End vblank line 28		;
-; -------------------------------
-
-; -------------------------------
-; Start vblank line 29		;
-; Fulfill prerequisites for display
-				;
-	; start 57-cycle NOP	;
-	CLC			; +2/2
-	LDA	#$2A		; +2/4 - hides 'ROL' opcode $2A
-	; ROL			; +2*7 - hideen in previous instruction
-	CLC			; +2*8
-	BNE *-2			; +3*7+2
-	; end 57-cycle NOP	;
-				;
-; Set things up for line loop	;
-	LDY	#15		; +2/59
-	LDA	Pal1+15		; +4/63
-	LDX	Pal2+15		; +4/67
-	STX	_TIA_COLUP0	; +3/70
-	STX	_TIA_VBLANK	; +3/73 turn blank off - as late as possible
 Line19To171:			;
-	STA	_TIA_WSYNC	; +3/76
+	STA	_TIA_WSYNC	; +3/(75>76) when falling through
+				; +3(25..26>76) when jumped to
 ; End vblank line 29		;
 ; Also end active line 18, 37, 56, ... 170 through jump
 ; -------------------------------
@@ -421,7 +404,41 @@ Line19To171:			;
 ; ========================
 
 ; -------------------------------
-; Start active line 0..15, 19..34, 38..53, ... 171..186
+; Start active line 0, 19, 38, ... 171
+; Update graphics pointers for this row of rollers
+	LDA	_ZP_LINE_COUNT	;
+	AND	#3		;
+	ASL			;
+	ASL			;
+	ASL			;
+	ASL			;
+	STA	_ZP_BARGFX2	;
+				;
+	STA	_TIA_WSYNC	; +3/(?..76)
+; End active line 0, 19, 38, ... 171
+; -------------------------------
+
+; -------------------------------
+; Start active line 1, 20, 39, ... 172
+; Set things up for line loop	;
+				;
+	; start 63-cycle NOP	;
+        LDX	#12		; +2/2
+	DEX			; +2*12
+	BNE	*-1		; +3*11+2/61
+	NOP			; +2/63
+	; end 63-cycle NOP	;
+				;
+	LDY	#15		; +2/65
+	LDA	Pal1+15		; +4/69
+	LDX	Pal2+15		; +4/73
+	STX	_TIA_COLUP0	; +3/76
+; Perfect sync			;
+; End active line 1, 20, 39, ... 172
+; -------------------------------
+
+; -------------------------------
+; Start active line 2..17, 21..36, 40..55, ... 173..188
 ; Display 16 lines of rollers	;
 ;				;
 ; Must enter this loop with the following:
@@ -461,115 +478,41 @@ LinesRoller:			;
 	LDA	Pal1-1,Y	; +4/71
 	DEY			; +2/73
 	BPL	LinesRoller	; +3/76 when taken - exact sync
+				; MUST NOT CROSS PAGE BOUNDARY
 				; +2/75 when falling through
-; End active line 0..15, 19..34, 38..53, ... 171..186
-; -------------------------------
-
-; -------------------------------
-; Start active line 16, 35, 54, ... 187
-; Technically starts 1 cycle early (see previous line)
-				;
-; Clear palette			;
-	LDA	#0		;
-	STA	_TIA_COLUBK	;
-	STA	_TIA_COLUPF	;
-	STA	_TIA_COLUP0	;
-	STA	_TIA_COLUP1	;
-	STA	_TIA_WSYNC	;
-; End active line 16, 35, 54, ... 187
-; -------------------------------
-
-; -------------------------------
-; Start active line 17, 36, 55, ... 188
-	LDA	_ZP_LINE_COUNT
-	AND	#3
-	ASL
-	ASL
-	ASL
-	ASL
-	STA	_ZP_BARGFX2
-
-;	LDX	_ZP_READ_LOGO	; +3		+3
-
-;	LDA	MBLogo,X	; +4
-;	TAY			; +2
-;	LSR			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX1	; +3		+13
-
-;	TYA			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX2	; +3		+7
-
-;	TYA			; +2
-;	ASL			; +2
-;	ASL			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX3	; +3		+11
-
-;	INX			; +2		+2
-
-;	LDA	MBLogo,X	; +4
-;	TAY			; +2
-;	LSR			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX4	; +3
-
-;	TYA			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX5	; +3
-
-;	TYA			; +2
-;	ASL			; +2
-;	ASL			; +2
-;	AND	#$30		; +2
-;	STA	_ZP_BARGFX6	; +3
-
-;	INX			; +2		+2
-
-;	STX	_ZP_READ_LOGO	; +3		+3
-
-				;		+72
-
-	STA	_TIA_WSYNC	;
-; End active line 17, 36, 55, ... 188
+; Near-perfect sync, ends 1 cycle early
+; End active line 2..17, 21..36, 40..55, ... 173..188
 ; -------------------------------
 
 ; -------------------------------
 ; Start active line 18, 37, 56, ... 189
-	; start 49-cycle NOP	;
-	LDY	#$88		; +2/2 - hides 'DEY'
-	; DEY			; +2*9
-	BMI	*-1		; +3*9+2/49
-	; end 49-cycle NOP	;
+; Starts 1 cycle early (see previous line)
 				;
-	LDY	#15		; +2/51
-	LDA	Pal1+15		; +4/55
-	LDX	Pal2+15		; +4/59
-	DEC	_ZP_LINE_COUNT	; +5/64
-	STX	_TIA_COLUP0	; +3/67 COL=201 PIX=133
-	BPL	Line19To171	; taken: +3/70 or +4/71 (depending on alignment)
-				; not taken: +2/7
-	STA	_TIA_WSYNC	;
+; Clear palette			;
+	LDA	#0		; +2/1
+	STA	_TIA_COLUBK	; +3/4
+	STA	_TIA_COLUPF	; +3/7
+	STA	_TIA_COLUP0	; +3/10
+	STA	_TIA_COLUP1	; +3/13
+				;
+	DEC	_ZP_LINE_COUNT	; +5/18
+	BPL	Line19To171	; Taken: +3..4/22..23
+				; WSYNC is borrowed from jump destination
+				; Not taken: +2/20
+				;
+	STA	_TIA_WSYNC	; +3/(23>76)
 ; End active line 189		;
 ; -------------------------------
 
 ; -------------------------------
 ; Start active line 190		;
-				;
-; Clear palette			;
-	LDA	#0		;
-	STA	_TIA_COLUBK	;
-	STA	_TIA_COLUPF	;
-	STA	_TIA_COLUP0	;
-	STA	_TIA_COLUP1	;
-	STA	_TIA_WSYNC	; +3/(3..76)
+	STA	_TIA_WSYNC	; +3/(3>76)
 ; End active line 190		;
 ; -------------------------------
 
 ; -------------------------------
 ; Start active line 191		;
-	STA	_TIA_WSYNC	; +3/(3..76)
+	STA	_TIA_WSYNC	; +3/(3>76)
 ; End active line 191		;
 ; -------------------------------
 
@@ -650,7 +593,7 @@ LinesRoller:			;
 ; Trigger HMOVE on clock 74 (magic trick)
 	STA	_TIA_HMOVE	; +3/74
 	DEY			; +2/76
-; No WSYNC, perfect sync	;
+; perfect sync			;
 ; End active line 192		;
 ; -------------------------------
 
@@ -687,7 +630,7 @@ LinesRoller:			;
 	STA	_TIA_VDELP0	; +3/48
 	STA	_TIA_VDELP1	; +3/51
 	DEY			; +2/53
-	STA	_TIA_WSYNC	; +3/(56..76)
+	STA	_TIA_WSYNC	; +3/(56>76)
 ; End active line 193		;
 ; -------------------------------
 
@@ -704,10 +647,11 @@ LinesRoller:			;
 				;
 	.align	$100,$EA	; $EA is NOP
 Line195To207:			; Steal that WSYNC as end of subsequent lines
-	STA	_TIA_WSYNC	; +3/(16..76) when falling through
+	STA	_TIA_WSYNC	; +3/(16>76) when falling through
         			; +3/76 when jumped to (no margin)
 				;
 ; End active line 194		;
+; Also end active line 195-207 through jump
 ; -------------------------------
 
 ; -------------------------------
@@ -764,10 +708,10 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 				;	oP0=5 nP0=5 oP1=4 nP1=X
 				;
 	BPL	Line195To207	; Taken: +3/73 - MUST NOT CROSS PAGE BOUNDARY
-				; WSYNC is borrowed from previous code block
+				; WSYNC is borrowed from jump destination
 				; Not taken +2/72
 				;
-	STA	_TIA_WSYNC	; +3/(75..76)
+	STA	_TIA_WSYNC	; +3/(75>76)
 ; End active line 208		;
 ; -------------------------------
 
@@ -794,7 +738,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_GRP0	; +3/31 COL=94 PIX=28
 				;	oP0=0 nP0=0 oP1=0 nP1=0
 				;
-	STA	_TIA_WSYNC	; +3/(34..76) - end active line 209
+	STA	_TIA_WSYNC	; +3/(34>76) - end active line 209
 ; End active line 209		;
 ; -------------------------------
 
@@ -807,7 +751,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	DEC	_ZP_SIGPAL	; +5/5
 	LDA	(_ZP_SIGPAL),Y	; +5/10
 	STA	_TIA_COLUBK	; +3/13 COL=39 PIX=-29
-	STA	_TIA_WSYNC	; +3/(16..76)
+	STA	_TIA_WSYNC	; +3/(16>76)
 ; End active line 210		;
 ; -------------------------------
 
@@ -826,7 +770,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	CLC			; +2/18
 	ADC	#3		; +2/20
 	STA	_ZP_SIGPAL	; +2/22
-	STA	_TIA_WSYNC	; +3/(25..76)
+	STA	_TIA_WSYNC	; +3/(25>76)
 ; End active line 211		;
 ; -------------------------------
 
