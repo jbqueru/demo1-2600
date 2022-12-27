@@ -389,24 +389,27 @@ TimVblank:			;
 
 ; -------------------------------
 ; Start vblank line 29		;
-	.repeat 28
-	NOP			; /56
-	.repend
-
-	LDY	#15		; /58
-        LDA	Pal1+15		; /62
-
-	LDX	Pal2+15		; /66
-        STX	_TIA_COLUP0
-	STX	_TIA_VBLANK	; /72 turn blank off
+; Fulfill prerequisites for display
+				;
+	; start 57-cycle NOP	;
+	CLC			; +2/2
+	LDA	#$2A		; +2/4 - hides 'ROL' opcode $2A
+	; ROL			; +2*7 - hideen in previous instruction
+	CLC			; +2*8
+	BNE *-2			; +3*7+2
+	; end 57-cycle NOP	;
+				;
+; Set things up for line loop	;
+	LDY	#15		; +2/59
+	LDA	Pal1+15		; +4/63
+	LDX	Pal2+15		; +4/67
+	STX	_TIA_COLUP0	; +3/70
+	STX	_TIA_VBLANK	; +3/73 turn blank off - as late as possible
 Line19To171:			;
-	STA	_TIA_WSYNC	; +3/(75..76)
+	STA	_TIA_WSYNC	; +3/76
 ; End vblank line 29		;
+; Also end active line 18, 37, 56, ... 170 through jump
 ; -------------------------------
-
-
-; Also end active line 7, 15, [+8], 183
-
 
 ; ========================
 ; Active - 212 lines total
@@ -422,9 +425,9 @@ Line19To171:			;
 ; * P0 color already set	;
 LinesRoller:			;
 ; Set the palette for this line (P0 has already been set)
-	STA	_TIA_COLUBK	; +3/3 COL=9 PIX=-57
-	SBC	#$62		; +2/5
-	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STA	_TIA_COLUPF	; +3/3 COL=9 PIX=-57
+	ADC	#$2A		; +2/5
+	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 	STX	_TIA_COLUP1	; +3/11 COL=33 PIX=-35
 				;
 ; Update playfield graphics	;
@@ -479,13 +482,18 @@ LinesRoller:			;
 
 ; -------------------------------
 ; Start active line 18, 37, 56, ... 189
-	LDX	#$4A
-	LDA	#$EA
-	LDY	#15		;
-        LDA	Pal1+15		; /62
-	LDX	Pal2+15		; /66
-	DEC	_ZP_LINE_COUNT	; +5/5
-	BPL	Line19To171	; taken: +3/8 + page boundary
+	; start 49-cycle NOP	;
+	LDY	#$88		; +2/2 - hides 'DEY'
+	; DEY			; +2*9
+	BMI	*-1		; +3*9+2/49
+	; end 49-cycle NOP	;
+				;
+	LDY	#15		; +2/51
+	LDA	Pal1+15		; +4/55
+	LDX	Pal2+15		; +4/59
+	DEC	_ZP_LINE_COUNT	; +5/64
+	STX	_TIA_COLUP0	; +3/67 COL=201 PIX=133
+	BPL	Line19To171	; taken: +3/70 or +4/71 (depending on alignment)
 				; not taken: +2/7
 	STA	_TIA_WSYNC	;
 ; End active line 189		;
@@ -493,6 +501,13 @@ LinesRoller:			;
 
 ; -------------------------------
 ; Start active line 190		;
+				;
+; Clear palette			;
+	LDA	#0		;
+	STA	_TIA_COLUBK	;
+	STA	_TIA_COLUPF	;
+	STA	_TIA_COLUP0	;
+	STA	_TIA_COLUP1	;
 	STA	_TIA_WSYNC	; +3/(3..76)
 ; End active line 190		;
 ; -------------------------------
@@ -769,10 +784,10 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; bar palette
 
 Pal1:
-	.byte	$C4,$C4,$C6,$C6,$CA,$CA,$CE,$CE,$CE,$CE,$CA,$CA,$C6,$C6,$C4,$C4
+	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E,$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
 
 Pal2:
-	.byte	$C,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,$C
+	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
 
 	.align	$100,0
 ; Signature
@@ -859,9 +874,9 @@ Logo5:
 	.byte	%11111111
 
 Colors1:
-	.byte	$12,$12,$14
-        .byte	$14,$14,$14,$16,$16,$16,$16,$16,$16,$16,$16,$14,$14,$14
-        .byte	$14,$12,$12
+	.byte	$62,$64,$62
+        .byte	$64,$66,$64,$66,$68,$66,$68,$68,$66,$68,$66,$64,$66,$64
+        .byte	$62,$64,$62
 
 
 ; Reset / Start vectors
