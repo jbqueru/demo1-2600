@@ -279,7 +279,7 @@ TimOverscan:			;
 ; position, plus 6 cycles of loop jitter, well within the 73 cycles
 ; before WSYNC.			;
 				;
-	LDA	#31		; +2/7 - load timer value
+	LDA	#32		; +2/7 - load timer value
 	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
 				;
 ; about 2100 cycles available here
