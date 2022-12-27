@@ -193,9 +193,9 @@ ClearZeroPage:
 	LDA	#(Colors1 + 3 >> 8)
 	STA	_ZP_SIGPAL_HI
 
-	LDA	#(Logo5 & $FF)
+	LDA	#(Logo3 & $FF)
         STA	_ZP_BARGFX_LO
-	LDA	#(Logo5 >> 8)
+	LDA	#(Logo3 >> 8)
         STA	_ZP_BARGFX_HI
 
 ; ##############################
@@ -415,30 +415,43 @@ Line7To183:			;
 
 ; -------------------------------
 ; Start active line 0..15, 19..34, 38..53, ... 171..186
-; Display 16 lines of rollers
-LinesRoller:
-	LDA	Pal1,Y		; +4/4
-	STA	_TIA_COLUBK	; +3/7
-	ADC	#$C0		; +2/9
-	STA	_TIA_COLUPF	; +3/12
+; Display 16 lines of rollers	;
+;				;
+; Must enter this loop with the following:
+; * A = background color	;
+; * X = player color		;
+; * P0 color already set	;
+LinesRoller:			;
+; Set the palette for this line (P0 has already been set)
+	STA	_TIA_COLUBK	; +3/3 COL=9 PIX=-57
+	SBC	#$62		; +2/5
+	STA	_TIA_COLUPF	; +3/8 COL=24 PIX=-44
+	STX	_TIA_COLUP1	; +3/11 COL=33 PIX=-35
 				;
-	LDA	(_ZP_BARGFX_LO),Y	; +5/17
-	STA	_TIA_PF0	; +3/20 MIN=-23/*53 MAX=21
-	LDA	(_ZP_BARGFX_LO),Y	; +5/25
-	STA	_TIA_PF1	; +3/28 MIN=-12/*64 MAX=27 (!!!)
-	LDA	(_ZP_BARGFX_LO),Y	; +5/33
-	STA	_TIA_PF2	; +3/36 MIN=-1/*75 MAX=37
-	LDA	(_ZP_BARGFX_LO),Y	; +5/41
-	STA	_TIA_PF0	; +3/44 MIN=27 MAX=48
-	LDA	(_ZP_BARGFX_LO),Y	; +5/49
-	STA	_TIA_PF1	; +3/52 MIN=37 MAX=53
-	LDA	(_ZP_BARGFX_LO),Y	; +5/57
-	STA	_TIA_PF2	; +3/60 MIN=48 MAX=64
+; Update playfield graphics	;
+	LDA	(_ZP_BARGFX_LO),Y	; +5/16
+	STA	_TIA_PF0	; +3/19 COL=57 PIX=-11
+				; For playfield update, CPU min=-23/*53 max=21
+	LDA	(_ZP_BARGFX_LO),Y	; +5/24
+	STA	_TIA_PF1	; +3/27 COL=81 PIX=13
+				; For playfield update, CPU min=-12/*64 max=27
+	LDA	(_ZP_BARGFX_LO),Y	; +5/32
+	STA	_TIA_PF2	; +3/35 COL=105 PIX=37
+				; For playfield update, CPU min=-1/*75 max=37
+	LDA	(_ZP_BARGFX_LO),Y	; +5/40
+	STA	_TIA_PF0	; +3/43 COL=129 PIX=61
+				; For playfield update, CPU min=27 max=48
+	LDA	(_ZP_BARGFX_LO),Y	; +5/48
+	STA	_TIA_PF1	; +3/51 COL=153 PIX=85
+				; For playfield update, CPU min=37 max=53
+	LDA	(_ZP_BARGFX_LO),Y	; +5/56
+	STA	_TIA_PF2	; +3/59 COL=177 PIX=109
+				; For playfield update, CPU min=48 max=64
 				;
-	LDA	Pal2,Y		; +4/64
-	STA	_TIA_COLUP0	; +3/67
-	STA.w	_TIA_COLUP1	; +3/71
-				;
+; Prepare palette for next line	;
+	LDX	Pal2-1,Y	; +4/63
+	STX.w	_TIA_COLUP0	; +3/67 COL=201 PIX=133
+	LDA	Pal1-1,Y	; +4/71
 	DEY			; +2/73
 	BPL	LinesRoller	; +3/76 when taken - exact sync
 				; +2/75 when falling through
@@ -447,12 +460,15 @@ LinesRoller:
 
 ; -------------------------------
 ; Start active line 16, 35, 54, ... 187
-	LDA	#0
-	STA	_TIA_COLUBK
-	STA	_TIA_COLUPF
-	STA	_TIA_COLUP0
-	STA	_TIA_COLUP1
-	STA	_TIA_WSYNC
+; Technically starts 1 cycle early (see previous line)
+				;
+; Clear palette			;
+	LDA	#0		;
+	STA	_TIA_COLUBK	;
+	STA	_TIA_COLUPF	;
+	STA	_TIA_COLUP0	;
+	STA	_TIA_COLUP1	;
+	STA	_TIA_WSYNC	;
 ; End active line 16, 35, 54, ... 187
 ; -------------------------------
 
@@ -464,6 +480,8 @@ LinesRoller:
 
 ; -------------------------------
 ; Start active line 18, 37, 56, ... 189
+	LDX	#$4A
+	LDA	#$EA
 	LDY	#15		;
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BPL	Line7To183	; taken: +3/8 + page boundary
@@ -753,7 +771,7 @@ Pal1:
 	.byte	$C2,$C2,$C6,$C6,$CA,$CA,$CE,$CE,$CE,$CE,$CA,$CA,$C6,$C6,$C2,$C2
 
 Pal2:
-	.byte	0,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,0,0
+	.byte	$E,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,0,$E
 
 	.align	$100,0
 ; Signature
