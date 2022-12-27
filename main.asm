@@ -158,6 +158,7 @@ _ZP_BARGFX3	.equ	$87	; high bits at $88
 _ZP_BARGFX4	.equ	$89	; high bits at $8A
 _ZP_BARGFX5	.equ	$8B	; high bits at $8C
 _ZP_BARGFX6	.equ	$8D	; high bits at $8E
+_ZP_READLOGO	.equ	$8F
 
 ; ########################
 ; ########################
@@ -186,6 +187,17 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
+; Init logo
+; TODO: possibly save a few bytes?
+	LDA	#(Bar00 >> 8)
+	STA	_ZP_BARGFX1 + 1
+	STA	_ZP_BARGFX2 + 1
+	STA	_ZP_BARGFX3 + 1
+	STA	_ZP_BARGFX4 + 1
+	STA	_ZP_BARGFX5 + 1
+	STA	_ZP_BARGFX6 + 1
+
+
 ; Set color pointer for signature background
 ; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
@@ -194,36 +206,6 @@ ClearZeroPage:
 	STA	_ZP_SIGPAL
 	LDA	#(Colors1 + 3 >> 8)
 	STA	_ZP_SIGPAL + 1
-
-	LDA	#(Bar10 & $FF)
-	STA	_ZP_BARGFX1
-	LDA	#(Bar10 >> 8)
-	STA	_ZP_BARGFX1 + 1
-
-	LDA	#(Bar00 & $FF)
-	STA	_ZP_BARGFX2
-	LDA	#(Bar00 >> 8)
-	STA	_ZP_BARGFX2 + 1
-
-	LDA	#(Bar10 & $FF)
-	STA	_ZP_BARGFX3
-	LDA	#(Bar10 >> 8)
-	STA	_ZP_BARGFX3 + 1
-
-	LDA	#(Bar00 & $FF)
-	STA	_ZP_BARGFX4
-	LDA	#(Bar00 >> 8)
-	STA	_ZP_BARGFX4 + 1
-
-	LDA	#(Bar11 & $FF)
-	STA	_ZP_BARGFX5
-	LDA	#(Bar11 >> 8)
-	STA	_ZP_BARGFX5 + 1
-
-	LDA	#(Bar01 & $FF)
-	STA	_ZP_BARGFX6
-	LDA	#(Bar01 >> 8)
-	STA	_ZP_BARGFX6 + 1
 
 
 ; ##############################
@@ -504,6 +486,19 @@ LinesRoller:			;
 
 ; -------------------------------
 ; Start active line 17, 36, 55, ... 188
+	LDA	_ZP_LINE_COUNT
+        AND	#3
+        ASL
+        ASL
+        ASL
+        ASL
+        STA	_ZP_BARGFX1
+        STA	_ZP_BARGFX2
+        STA	_ZP_BARGFX3
+        STA	_ZP_BARGFX4
+        STA	_ZP_BARGFX5
+        STA	_ZP_BARGFX6
+
 	STA	_TIA_WSYNC	;
 ; End active line 17, 36, 55, ... 188
 ; -------------------------------
@@ -816,6 +811,19 @@ Pal1:
 
 Pal2:
 	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
+
+MBLogo:	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+	.byte	$20,$20,$20,$00,$20,$20
+
+	.align	$100,0
 
 Bar00:	.byte	0,0,0,0, 0,0,0,0
 	.byte	0,0,0,0, 0,0,0,0
