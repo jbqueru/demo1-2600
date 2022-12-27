@@ -372,15 +372,12 @@ TimVblank:			;
 	LDY	#9		; +2/61
 	STY	_ZP_LINE_COUNT	; +3/64
 				;
-; Turn Vblank off		;
-	LDY	#0		; +2/66
+	NOP			; +2/66
 				;
 	; Interleave set M1 position
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
 				;
-;	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
-				;
-	STA	_TIA_WSYNC	; +3/(75..76)
+	STA	_TIA_WSYNC	; +3/(72..76)
 ; End vblank line 27		;
 ; -------------------------------
 
@@ -402,7 +399,7 @@ TimVblank:			;
 	LDX	Pal2+15		; /66
         STX	_TIA_COLUP0
 	STX	_TIA_VBLANK	; /72 turn blank off
-Line7To183:			;
+Line19To171:			;
 	STA	_TIA_WSYNC	; +3/(75..76)
 ; End vblank line 29		;
 ; -------------------------------
@@ -488,7 +485,7 @@ LinesRoller:			;
         LDA	Pal1+15		; /62
 	LDX	Pal2+15		; /66
 	DEC	_ZP_LINE_COUNT	; +5/5
-	BPL	Line7To183	; taken: +3/8 + page boundary
+	BPL	Line19To171	; taken: +3/8 + page boundary
 				; not taken: +2/7
 	STA	_TIA_WSYNC	;
 ; End active line 189		;
