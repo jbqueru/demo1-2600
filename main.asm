@@ -296,80 +296,98 @@ TimVblank:			;
 ; End vblank line 28		;
 ; -------------------------------
 
-; Segment playfield lines every 16 pixels = 10 segments
-; P0 repeat 3x
-; M0 repeat 3x
-; M1 repeat 2x (or 3x w/ overlap)
-; P1 repeat 2x (or 3x w/ overlap)
+; ######################
+; #                    #
+; #  Rolling graphics  #
+; #                    #
+; ######################
 
-; possible M positions
-; MIS=47 COL=111 CPU=37 (implies MIS=63 MIS=79)
-; MIS=95 COL=159 CPU=53 (implies MIS=111 MIS=127)
-; MIS=143 COL=207 CPU=69 (implies MIS=159 MIS=15)
+; This is a display of 10 rows or 10 rolling cylinders.
+;
+; The cylinders are a mix of background and playfield, 14 pixels wide
+; overall, separated by players and missiles.
+;
+; The players and missiles are set for a 3x close repeat
+;
+; Player 0 is at pixel 15, i.e. 15, 31, 47
+; Player 1 is at pixel 63, i.e. 63, 79, 95
+; Missile 0 is at pixel 95, i.e. 95, 111, 127
+; Missile 1 is at pixel 143, i.e. 143, 159, 15
+;
+; Those specific locations are chosen because they don't need any HMOVE
+; but aren't optimized for any further purpose.
+;
+; Some of the missiles and players overlap, and player 0 has priority,
+; resulting in the following layout, which allows to set color 0 early
+; or late during the visible display:
+; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
+;
+; Theoretically, the layout of players/missiles can be optimized to give
+; the most flexibility about the timing of palette changes, at the cost
+; of an HMOVE
 
-; Assuming 95-143, missing 31 47 63 79
-; Can be done at 31 or 15
-
-; SPR=15 COL=78 CPU=26
-; SPR=63 COL=126 CPU=42
-
-; Start vblank line 29
-
-; Stop sprite delay
+; -------------------------------
+; Start vblank line 29		;
+; Set up palette		;
+; Set up sprites		;
+;				;
+; Stop sprite delay		;
 	LDA	#$0		; +2/2
 	STA	_TIA_VDELP0	; +3/5
 	STA	_TIA_VDELP1	; +3/8
-
-; Disable sprite reflection
+				;
+; Disable sprite reflection	;
 	STA	_TIA_RESP0	; +3/11
 	STA	_TIA_RESP1	; +3/14
-
-; Color black (happens to be 0).
+				;
+; Color black (happens to be 0).;
 	STA	_TIA_COLUP0	; +3/17
 	STA	_TIA_COLUP1	; +3/20
-	STA	_TIA_COLUPF	; +3/23
-
+	STA	_TIA_COLUPF	; +3/23 - TODO - might not need this
+				;
 	; Interleave set P0 position
 	STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
-
-	STA	_TIA_COLUBK	; +3/29
-
+				;
+	STA	_TIA_COLUBK	; +3/29 - TODO - might not need this
+				;
 ; Set sprite pattern (same for both players - 2 leftmost pixels)
 	LDA	#$C0		; +2/31
 	STA	_TIA_GRP0	; +3/34
 	STA	_TIA_GRP1	; +3/37
-
+				;
 ; Set missile size / sprite repeat / enable missile (common bit 1).
 	LDA	#$13		; +2/39 - 2-pixel missile, 3 copies close
-
+				;
 	; Interleave set P1 position
 	STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
-
+				;
 	STA	_TIA_NUSIZ0	; +3/45
 	STA	_TIA_NUSIZ1	; +3/48
 	NOP			; +2/50
-
+				;
 	; Interleave set M0 position
 	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
-
+				;
 	STA	_TIA_ENAM0	; +3/56
 	STA	_TIA_ENAM1	; +3/59
-
-; Prepare loop
+				;
+; Prepare loop			;
 	LDY	#24		; +2/61
 	STY	_ZP_LINE_COUNT	; +3/64
-
-; Turn Vblank off
+				;
+; Turn Vblank off		;
 	LDY	#0		; +2/66
-
+				;
 	; Interleave set M1 position
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
-
+				;
 	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
-
-Line7To183:
+				;
+Line7To183:			;
 	STA	_TIA_WSYNC	; +3/(75..76)
-; End vblank line 29
+; End vblank line 29		;
+; -------------------------------
+
 ; Also end active line 7, 15, [+8], 183
 
 
@@ -438,7 +456,7 @@ Line7To183:
 
 	LDA	Pal1,Y		; +4/4
 	STA	_TIA_COLUBK	; +3/7
-	LDA	Pal2,Y		; +4/11
+        ADC	#$C0		; TODO timings off after this
 	STA	_TIA_COLUPF	; +3/14
 
 	LDA	(_ZP_BARGFX_LO),Y	; +5/19
@@ -829,9 +847,6 @@ Pal1:
 	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
 	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
 
-Pal2:
-	.byte	$92,$96,$9A,$9E,$9E,$9A,$96,$92
-	.byte	$92,$96,$9A,$9E,$9E,$9A,$96,$92
 
 ; Reset / Start vectors
 	.org	$FFFC
