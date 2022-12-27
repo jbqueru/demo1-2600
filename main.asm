@@ -151,11 +151,13 @@ _PIA_RTIM	.equ	$284
 ; Zero-page layout
 
 _ZP_LINE_COUNT	.equ	$80
-_ZP_SIGPAL_LO	.equ	$81
-_ZP_SIGPAL_HI	.equ	$82
-
-_ZP_BARGFX_LO	.equ	$83
-_ZP_BARGFX_HI	.equ	$84
+_ZP_SIGPAL	.equ	$81	; high bits at $82
+_ZP_BARGFX1	.equ	$83	; high bits at $84
+_ZP_BARGFX2	.equ	$85	; high bits at $86
+_ZP_BARGFX3	.equ	$87	; high bits at $88
+_ZP_BARGFX4	.equ	$89	; high bits at $8A
+_ZP_BARGFX5	.equ	$8B	; high bits at $8C
+_ZP_BARGFX6	.equ	$8D	; high bits at $8E
 
 ; ########################
 ; ########################
@@ -189,14 +191,24 @@ ClearZeroPage:
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
 ; (i.e. at addresses before that of line 0).
 	LDA	#(Colors1 + 3 & $FF)
-	STA	_ZP_SIGPAL_LO
+	STA	_ZP_SIGPAL
 	LDA	#(Colors1 + 3 >> 8)
-	STA	_ZP_SIGPAL_HI
+	STA	_ZP_SIGPAL + 1
 
-	LDA	#(Logo3 & $FF)
-        STA	_ZP_BARGFX_LO
-	LDA	#(Logo3 >> 8)
-        STA	_ZP_BARGFX_HI
+	LDA	#(Bar01 & $FF)
+        STA	_ZP_BARGFX1
+        STA	_ZP_BARGFX2
+        STA	_ZP_BARGFX3
+        STA	_ZP_BARGFX4
+        STA	_ZP_BARGFX5
+        STA	_ZP_BARGFX6
+	LDA	#(Bar01 >> 8)
+        STA	_ZP_BARGFX1 + 1
+        STA	_ZP_BARGFX2 + 1
+        STA	_ZP_BARGFX3 + 1
+        STA	_ZP_BARGFX4 + 1
+        STA	_ZP_BARGFX5 + 1
+        STA	_ZP_BARGFX6 + 1
 
 ; ##############################
 ; ##############################
@@ -431,22 +443,22 @@ LinesRoller:			;
 	STX	_TIA_COLUP1	; +3/11 COL=33 PIX=-35
 				;
 ; Update playfield graphics	;
-	LDA	(_ZP_BARGFX_LO),Y	; +5/16
+	LDA	(_ZP_BARGFX1),Y	; +5/16
 	STA	_TIA_PF0	; +3/19 COL=57 PIX=-11
 				; For playfield update, CPU min=-23/*53 max=21
-	LDA	(_ZP_BARGFX_LO),Y	; +5/24
+	LDA	(_ZP_BARGFX2),Y	; +5/24
 	STA	_TIA_PF1	; +3/27 COL=81 PIX=13
 				; For playfield update, CPU min=-12/*64 max=27
-	LDA	(_ZP_BARGFX_LO),Y	; +5/32
+	LDA	(_ZP_BARGFX3),Y	; +5/32
 	STA	_TIA_PF2	; +3/35 COL=105 PIX=37
 				; For playfield update, CPU min=-1/*75 max=37
-	LDA	(_ZP_BARGFX_LO),Y	; +5/40
+	LDA	(_ZP_BARGFX4),Y	; +5/40
 	STA	_TIA_PF0	; +3/43 COL=129 PIX=61
 				; For playfield update, CPU min=27 max=48
-	LDA	(_ZP_BARGFX_LO),Y	; +5/48
+	LDA	(_ZP_BARGFX5),Y	; +5/48
 	STA	_TIA_PF1	; +3/51 COL=153 PIX=85
 				; For playfield update, CPU min=37 max=53
-	LDA	(_ZP_BARGFX_LO),Y	; +5/56
+	LDA	(_ZP_BARGFX6),Y	; +5/56
 	STA	_TIA_PF2	; +3/59 COL=177 PIX=109
 				; For playfield update, CPU min=48 max=64
 				;
@@ -555,7 +567,7 @@ LinesRoller:			;
 				;
 ; Set all colors to match the "background" - everything is invisible
 	LDY	#16		; +2/2 - 3 lines above + 14 lines of bitmap
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/7
+	LDA	(_ZP_SIGPAL),Y	; +5/7
 	STA	_TIA_COLUBK	; +3/10 COL=30 PIX=-38
 	STA	_TIA_COLUPF	; +3/13 COL=39 PIX=-29
 	STA	_TIA_COLUP0	; +3/16 COL=48 PIX=-20
@@ -606,7 +618,7 @@ LinesRoller:			;
 ; and sets the sprite delay (saves 1 precious CPU register)
 				;
 ; Set "background" color for this line (actually playfield)
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	LDA	(_ZP_SIGPAL),Y	; +5/5
 	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 ; Set a solid playfield		;
 	LDA	#$0		; +2/10
@@ -642,7 +654,7 @@ LinesRoller:			;
 ; Nothing groundbreaking here, everything is already set up
 				;
 ; Set "background" color for this line (actually playfield)
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	LDA	(_ZP_SIGPAL),Y	; +5/5
 	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 	DEY			; +2/10
 	JMP	Line195To207	; +3/13
@@ -662,7 +674,7 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; and split playfield.		;
 				;
 ; Set "background" color for this line (actually playfield)
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/5
+	LDA	(_ZP_SIGPAL),Y	; +5/5
 	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
 				;
 ; Reset playfield, filled	;
@@ -723,8 +735,8 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 				;
 ; Set "background" color for this line (actually playfield)
 	INY			; +2/2 - Y starts as $FF
-	DEC	_ZP_SIGPAL_LO	; +5/7
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/12
+	DEC	_ZP_SIGPAL	; +5/7
+	LDA	(_ZP_SIGPAL),Y	; +5/12
 	STA	_TIA_COLUBK	; +3/15 COL=45 PIX=-23
 				;
 ; Clean up playfield and sprites;
@@ -749,8 +761,8 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Nothing big here, everything is clean
 				;
 ; Set "background" color for this line (actually playfield)
-	DEC	_ZP_SIGPAL_LO	; +5/5
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
+	DEC	_ZP_SIGPAL	; +5/5
+	LDA	(_ZP_SIGPAL),Y	; +5/10
 	STA	_TIA_COLUBK	; +3/13 COL=39 PIX=-29
 	STA	_TIA_WSYNC	; +3/(16..76)
 ; End active line 210		;
@@ -762,15 +774,15 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Very little, just adjust color pointer back when done
 				;
 ; Set "background" color for this line (actually playfield)
-	DEC	_ZP_SIGPAL_LO	; +5/5
-	LDA	(_ZP_SIGPAL_LO),Y	; +5/10
+	DEC	_ZP_SIGPAL	; +5/5
+	LDA	(_ZP_SIGPAL),Y	; +5/10
 	STA	_TIA_COLUBK	; +3/13 COL=39 PIX=-29
-	LDA	_ZP_SIGPAL_LO	; +3/16
+	LDA	_ZP_SIGPAL	; +3/16
 				;
 ; Adjust color pointer back	;
 	CLC			; +2/18
 	ADC	#3		; +2/20
-	STA	_ZP_SIGPAL_LO	; +2/22
+	STA	_ZP_SIGPAL	; +2/22
 	STA	_TIA_WSYNC	; +3/(25..76)
 ; End active line 211		;
 ; -------------------------------
@@ -788,6 +800,18 @@ Pal1:
 
 Pal2:
 	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
+
+Bar00:	.byte	0,0,0,0, 0,0,0,0
+	.byte	0,0,0,0, 0,0,0,0
+
+Bar01:	.byte	$F,$F,$F,$F, $F,$F,$F,$F
+	.byte	$F,$F,$F,$F, $F,$F,$F,$F
+
+Bar10:	.byte	$F0,$F0,$F0,$F0, $F0,$F0,$F0,$F0
+	.byte	$F0,$F0,$F0,$F0, $F0,$F0,$F0,$F0
+
+Bar11:	.byte	$FF,$FF,$FF,$FF, $FF,$FF,$FF,$FF
+	.byte	$FF,$FF,$FF,$FF, $FF,$FF,$FF,$FF
 
 	.align	$100,0
 ; Signature
