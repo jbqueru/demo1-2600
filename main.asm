@@ -193,9 +193,9 @@ ClearZeroPage:
 	LDA	#(Colors1 + 3 >> 8)
 	STA	_ZP_SIGPAL_HI
 
-	LDA	#(Logo1 & $FF)
+	LDA	#(Logo5 & $FF)
         STA	_ZP_BARGFX_LO
-	LDA	#(Logo1 >> 8)
+	LDA	#(Logo5 >> 8)
         STA	_ZP_BARGFX_HI
 
 ; ##############################
@@ -267,22 +267,19 @@ TimOverscan:			;
 ; =======================
 
 ; -------------------------------
-; Vblank - 30 lines total
-
-; -------------------------------
 ; Start vblank line 0		;
 	LDA	#0		; +2/2
 	STA	_TIA_VSYNC	; +3/5 - turn sync off
 				;
-; Skip 28 lines. 28 lines is 28*76 = 2128 CPU cycles, i.e. 33.25*64.
-; In other words, 34 ticks of 64T is 28 lines + 48 CPU cycles.
-; Initialize timer at 35, it'll spend 64 cycles each in 34, 33... 1.
-; When it reaches 0, we've skipped 28 lines.
-; Timer is set 11 cycles into the line, fires 48 cycles after the exact
-; position, plus 6 cycles of loop jitter, within the 73 cycles
+; Skip 26 lines. 26 lines is 26*76 = 1976 CPU cycles, i.e. 30.87*64.
+; In other words, 31 ticks of 64T is 26 lines + 6 CPU cycles.
+; Initialize timer at 32, it'll spend 64 cycles each in 31, 30... 1.
+; When it reaches 0, we've skipped 26 lines.
+; Timer is set 11 cycles into the line, fires 6 cycles after the exact
+; position, plus 6 cycles of loop jitter, well within the 73 cycles
 ; before WSYNC.			;
 				;
-	LDA	#35		; +2/7 - load timer value
+	LDA	#31		; +2/7 - load timer value
 	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
 				;
 ; about 2100 cycles available here
@@ -293,7 +290,7 @@ TimVblank:			;
 	BNE	TimVblank	;
 				;
 	STA	_TIA_WSYNC	; +3/(?..76)
-; End vblank line 28		;
+; End vblank line 26		;
 ; -------------------------------
 
 ; ######################
@@ -327,7 +324,7 @@ TimVblank:			;
 ; of an HMOVE
 
 ; -------------------------------
-; Start vblank line 29		;
+; Start vblank line 27		;
 ; Set up palette		;
 ; Set up sprites		;
 ;				;
@@ -372,7 +369,7 @@ TimVblank:			;
 	STA	_TIA_ENAM1	; +3/59
 				;
 ; Prepare loop			;
-	LDY	#24		; +2/61
+	LDY	#9		; +2/61
 	STY	_ZP_LINE_COUNT	; +3/64
 				;
 ; Turn Vblank off		;
@@ -381,12 +378,33 @@ TimVblank:			;
 	; Interleave set M1 position
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
 				;
-	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
+;	STY	_TIA_VBLANK	; +3/72 COL=216 PIX=148 - turn blank off
 				;
+	STA	_TIA_WSYNC	; +3/(75..76)
+; End vblank line 27		;
+; -------------------------------
+
+; -------------------------------
+; Start vblank line 28		;
+	STA	_TIA_WSYNC	; +3/(3..76)
+; End vblank line 28		;
+; -------------------------------
+
+; -------------------------------
+; Start vblank line 29		;
+	.repeat 33
+	NOP
+	.repend
+
+	LDY	#15
+
+	LDA	#0
+	STA	_TIA_VBLANK	; turn blank off
 Line7To183:			;
 	STA	_TIA_WSYNC	; +3/(75..76)
 ; End vblank line 29		;
 ; -------------------------------
+
 
 ; Also end active line 7, 15, [+8], 183
 
@@ -394,65 +412,6 @@ Line7To183:			;
 ; ========================
 ; Active - 212 lines total
 ; ========================
-
-; update playfields: 6 writes
-; update palette: 4 writes
-
-
-; Naive approach, 62 cycles
-
-; small palette updates 14 cycles
-;	LDA	Pal1,Y		; 4
-;	STA	_TIA_COLUBK	; 3
-;	LDA	Pal2,Y		; 4
-;	STA	_TIA_COLUPF	; 3
-
-; playfield updates 48 cycles
-;	LDA	(PF0L),Y	; 5
-;	STA	_TIA_PF0	; 3
-;	LDA	(PF1L),Y	; 5
-;	STA	_TIA_PF1	; 3
-;	LDA	(PF2L),Y	; 5
-;	STA	_TIA_PF2	; 3
-;	LDA	(PF0R),Y	; 5
-;	STA	_TIA_PF0	; 3
-;	LDA	(PF1R),Y	; 5
-;	STA	_TIA_PF1	; 3
-;	LDA	(PF2R),Y	; 5
-;	STA	_TIA_PF2	; 3
-
-; Optimizations
-
-; playfield only 1 moves 38 cycles
-;	LDA	ZP,Y		; 3
-;	STA	_TIA_PF0	; 3
-;	LDA	ZP,Y		; 3
-;	STA	_TIA_PF1	; 3
-;	LDA	ZP,Y		; 3
-;	STA	_TIA_PF2	; 3
-;	LDA	ZP,Y		; 3
-;	STA	_TIA_PF0	; 3
-;	LDA	ZP,Y		; 3
-;	STA	_TIA_PF1	; 3
-;	LDA	(PF2R),Y	; 5
-;	STA	_TIA_PF2	; 3
-
-; large palette updates 24 cycles
-;	LDA	Pal1,Y		; 4
-;	STA	_TIA_COLUBK	; 3
-;	LDA	Pal2,Y		; 4
-;	STA	_TIA_COLUPF	; 3
-;	LDA	Pal3,Y		; 4
-;	STA	_TIA_COLUP0	; 3
-;	STA	_TIA_COLUP1	; 3
-
-; extra palette updates 16/17 cycles
-;	LDA	Pal1A,Y		; 4
-;	LDX	Pal1B,Y		; 4
-;	STA	_TIA_COLUBK	; 3
-;	NOP			; 2
-;	STX	_TIA_COLUBK	; 3
-
 
 	LDA	Pal1,Y		; +4/4
 	STA	_TIA_COLUBK	; +3/7
@@ -478,13 +437,18 @@ Line7To183:			;
 
 	; DEC + BNE		; +5/77 (!!!?!)
 
-	.repeat	7
+	.repeat	15
 	STA	_TIA_WSYNC
 	.repend
-        INY
+	.repeat	3
+	STA	_TIA_WSYNC
+	.repend
+        DEY
 	DEC	_ZP_LINE_COUNT	; +5/5
-	BNE	Line7To183	; taken: +3/8 + page boundary
+	BPL	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
+	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
+	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
 	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
 ; 
 ; -------------------------------
