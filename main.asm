@@ -322,16 +322,11 @@ TimVblank:			;
 ; Missile 1 is at pixel 143, i.e. 143, 159, 15
 ;
 ; Those specific locations are chosen because they don't need any HMOVE
-; but aren't optimized for any further purpose.
 ;
 ; Some of the missiles and players overlap, and player 0 has priority,
 ; resulting in the following layout, which allows to set color 0 early
 ; or late during the visible display:
 ; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
-;
-; Theoretically, the layout of players/missiles can be optimized to give
-; the most flexibility about the timing of palette changes, at the cost
-; of an HMOVE
 
 ; -------------------------------
 ; Start vblank line 27		;
