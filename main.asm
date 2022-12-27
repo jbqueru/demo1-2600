@@ -413,44 +413,75 @@ Line7To183:			;
 ; Active - 212 lines total
 ; ========================
 
+; -------------------------------
+; Start active line 0..15, 19..34, 38..53, ... 171..186
+; Display 16 lines of rollers
+LinesRoller:
 	LDA	Pal1,Y		; +4/4
 	STA	_TIA_COLUBK	; +3/7
-        ADC	#$C0		; TODO timings off after this
-	STA	_TIA_COLUPF	; +3/14
+	ADC	#$C0		; +2/9
+	STA	_TIA_COLUPF	; +3/12
+				;
+	LDA	(_ZP_BARGFX_LO),Y	; +5/17
+	STA	_TIA_PF0	; +3/20 MIN=-23/*53 MAX=21
+	LDA	(_ZP_BARGFX_LO),Y	; +5/25
+	STA	_TIA_PF1	; +3/28 MIN=-12/*64 MAX=27 (!!!)
+	LDA	(_ZP_BARGFX_LO),Y	; +5/33
+	STA	_TIA_PF2	; +3/36 MIN=-1/*75 MAX=37
+	LDA	(_ZP_BARGFX_LO),Y	; +5/41
+	STA	_TIA_PF0	; +3/44 MIN=27 MAX=48
+	LDA	(_ZP_BARGFX_LO),Y	; +5/49
+	STA	_TIA_PF1	; +3/52 MIN=37 MAX=53
+	LDA	(_ZP_BARGFX_LO),Y	; +5/57
+	STA	_TIA_PF2	; +3/60 MIN=48 MAX=64
+				;
+	LDA	Pal2,Y		; +4/64
+	STA	_TIA_COLUP0	; +3/67
+	STA.w	_TIA_COLUP1	; +3/71
+				;
+	DEY			; +2/73
+	BPL	LinesRoller	; +3/76 when taken - exact sync
+				; +2/75 when falling through
+; End active line 0..15, 19..34, 38..53, ... 171..186
+; -------------------------------
 
-	LDA	(_ZP_BARGFX_LO),Y	; +5/19
-        STA	_TIA_PF0	; +3/22 MIN=-23/*53 MAX=21 (!!!)
-	LDA	(_ZP_BARGFX_LO),Y	; +5/27
-        STA	_TIA_PF1	; +3/30 MIN=-12/*64 MAX=27 (!!!)
-	LDA	(_ZP_BARGFX_LO),Y	; +5/35
-        STA	_TIA_PF2	; +3/38 MIN=-1/*75 MAX=37 (!!!)
-	LDA	(_ZP_BARGFX_LO),Y	; +5/43
-        STA	_TIA_PF0	; +3/46 MIN=27 MAX=48
-	LDA	(_ZP_BARGFX_LO),Y	; +5/51
-        STA	_TIA_PF1	; +3/54 MIN=37 MAX=53 (!!!)
-	LDA	(_ZP_BARGFX_LO),Y	; +5/59
-        STA	_TIA_PF2	; +3/62 MIN=48 MAX=64
-
-	LDA	Pal1,Y		; +4/66
-	STA	_TIA_COLUP0	; +3/69
-	STA	_TIA_COLUP1	; +3/72
-
-	; DEC + BNE		; +5/77 (!!!?!)
-
-	.repeat	15
+; -------------------------------
+; Start active line 16, 35, 54, ... 187
+	LDA	#0
+	STA	_TIA_COLUBK
+	STA	_TIA_COLUPF
+	STA	_TIA_COLUP0
+	STA	_TIA_COLUP1
 	STA	_TIA_WSYNC
-	.repend
-	.repeat	3
-	STA	_TIA_WSYNC
-	.repend
-        DEY
+; End active line 16, 35, 54, ... 187
+; -------------------------------
+
+; -------------------------------
+; Start active line 17, 36, 55, ... 188
+	STA	_TIA_WSYNC	;
+; End active line 17, 36, 55, ... 188
+; -------------------------------
+
+; -------------------------------
+; Start active line 18, 37, 56, ... 189
+	LDY	#15		;
 	DEC	_ZP_LINE_COUNT	; +5/5
 	BPL	Line7To183	; taken: +3/8 + page boundary
 				; not taken: +2/7
-	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
-	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
-	STA	_TIA_WSYNC	; +3/(10..76) - end of line 8*n + 7
-; 
+	STA	_TIA_WSYNC	;
+; End active line 189		;
+; -------------------------------
+
+; -------------------------------
+; Start active line 190		;
+	STA	_TIA_WSYNC	; +3/(3..76)
+; End active line 190		;
+; -------------------------------
+
+; -------------------------------
+; Start active line 191		;
+	STA	_TIA_WSYNC	; +3/(3..76)
+; End active line 191		;
 ; -------------------------------
 
 ; ######################
@@ -716,6 +747,14 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Continue overscan line 0 up	;
 ; -------------------------------
 
+; bar palette
+
+Pal1:
+	.byte	$C2,$C2,$C6,$C6,$CA,$CA,$CE,$CE,$CE,$CE,$CA,$CA,$C6,$C6,$C2,$C2
+
+Pal2:
+	.byte	0,0,0,0,0,0,$4,$8,$8,$4,0,0,0,0,0,0,0
+
 	.align	$100,0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
@@ -804,12 +843,6 @@ Colors1:
 	.byte	$12,$12,$14
         .byte	$14,$14,$14,$16,$16,$16,$16,$16,$16,$16,$16,$14,$14,$14
         .byte	$14,$12,$12
-
-; bar palette
-
-Pal1:
-	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
-	.byte	$C2,$C6,$CA,$CE,$CE,$CA,$C6,$C2
 
 
 ; Reset / Start vectors
