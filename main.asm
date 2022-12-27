@@ -195,20 +195,36 @@ ClearZeroPage:
 	LDA	#(Colors1 + 3 >> 8)
 	STA	_ZP_SIGPAL + 1
 
+	LDA	#(Bar10 & $FF)
+	STA	_ZP_BARGFX1
+	LDA	#(Bar10 >> 8)
+	STA	_ZP_BARGFX1 + 1
+
+	LDA	#(Bar00 & $FF)
+	STA	_ZP_BARGFX2
+	LDA	#(Bar00 >> 8)
+	STA	_ZP_BARGFX2 + 1
+
+	LDA	#(Bar10 & $FF)
+	STA	_ZP_BARGFX3
+	LDA	#(Bar10 >> 8)
+	STA	_ZP_BARGFX3 + 1
+
+	LDA	#(Bar00 & $FF)
+	STA	_ZP_BARGFX4
+	LDA	#(Bar00 >> 8)
+	STA	_ZP_BARGFX4 + 1
+
+	LDA	#(Bar11 & $FF)
+	STA	_ZP_BARGFX5
+	LDA	#(Bar11 >> 8)
+	STA	_ZP_BARGFX5 + 1
+
 	LDA	#(Bar01 & $FF)
-        STA	_ZP_BARGFX1
-        STA	_ZP_BARGFX2
-        STA	_ZP_BARGFX3
-        STA	_ZP_BARGFX4
-        STA	_ZP_BARGFX5
-        STA	_ZP_BARGFX6
+	STA	_ZP_BARGFX6
 	LDA	#(Bar01 >> 8)
-        STA	_ZP_BARGFX1 + 1
-        STA	_ZP_BARGFX2 + 1
-        STA	_ZP_BARGFX3 + 1
-        STA	_ZP_BARGFX4 + 1
-        STA	_ZP_BARGFX5 + 1
-        STA	_ZP_BARGFX6 + 1
+	STA	_ZP_BARGFX6 + 1
+
 
 ; ##############################
 ; ##############################
