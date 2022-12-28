@@ -14,9 +14,16 @@
 
 	.processor	6502
 
-; -------------------------------
-; TIA registers
+; ############################
+; ############################
+; ###                      ###
+; ###  Hardware constants  ###
+; ###                      ###
+; ############################
+; ############################
 
+; -------------------------------
+; Start TIA registers
 _TIA_VSYNC	.equ	$00	; ......s.
 				;       |
                                 ;       +-- 1 = vsync on
@@ -29,7 +36,7 @@ _TIA_VBLANK	.equ	$01	; gl....b.
 
 _TIA_WSYNC	.equ	$02	; ........  write = wait for end of next line
 
-;_TIA_RSYNC	.equ	$03	; ........  write = reset horizontal counter
+_TIA_RSYNC	.equ	$03	; ........  write = reset horizontal counter
 
 _TIA_NUSIZ0	.equ	$04	; ..ss.nnn
 				;   || |||
@@ -131,21 +138,26 @@ _TIA_LU_M_LIGHT	.equ	$08
 _TIA_LU_LIGHT	.equ	$0A
 _TIA_LU_V_LIGHT	.equ	$0C
 _TIA_LU_MAX	.equ	$0E
+; End TIA registers
+; -------------------------------
 
 ; -------------------------------
-; PIA registers
+; Start RIOT registers
+_RIOT_DATA_A	.equ	$280
+_RIOT_DDR_A	.equ	$281
+_RIOT_DATA_B	.equ	$282
+_RIOT_DDR_B	.equ	$283
 
-_PIA_DATA_A	.equ	$280
-_PIA_DDR_A	.equ	$281
-_PIA_DATA_B	.equ	$282
-;_PIA_DDR_B	.equ	$283
+_RIOT_WT1T	.equ	$294
+_RIOT_WT8T	.equ	$295
+_RIOT_WT64T	.equ	$296
+_RIOT_WT1024T	.equ	$297
 
-_PIA_WT1T	.equ	$294
-_PIA_WT8T	.equ	$295
-_PIA_WT64T	.equ	$296
-_PIA_WT1024T	.equ	$297
+_RIOT_RTIM	.equ	$284
+; End RIOT registers
+; -------------------------------
 
-_PIA_RTIM	.equ	$284
+
 
 ; ####################
 ; ####################
@@ -171,10 +183,12 @@ _ZP_BARGFX3	.equ	$87	; high bits at $88
 _ZP_BARGFX4	.equ	$89	; high bits at $8A
 _ZP_BARGFX5	.equ	$8B	; high bits at $8C
 _ZP_BARGFX6	.equ	$8D	; high bits at $8E
-_ZP_BARREAD	.equ	$8F
+_ZP_BARREAD	.equ	$8F	;
 _ZP_BAROFF	.equ	$90	; 60 bytes, to $CB
 ; End variables for roller bar display
 ; -------------------------------
+
+
 
 ; ########################
 ; ########################
@@ -184,10 +198,6 @@ _ZP_BAROFF	.equ	$90	; 60 bytes, to $CB
 ; ########################
 ; ########################
 
-; -------------------------------
-; Code start
-
-	.seg	rom
 	.org	$F000,$EA	; $EA is NOP
 Main:
 ; Set up CPU
@@ -214,7 +224,6 @@ ClearZeroPage:
 	STA	_ZP_BARGFX5 + 1
 	STA	_ZP_BARGFX6 + 1
 
-
 ; Set color pointer for signature background
 ; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
@@ -225,6 +234,7 @@ ClearZeroPage:
 	STA	_ZP_SIGPAL + 1
 
 
+
 ; ##############################
 ; ##############################
 ; ###                        ###
@@ -232,7 +242,6 @@ ClearZeroPage:
 ; ###                        ###
 ; ##############################
 ; ##############################
-
 
 ; =========================
 ; Overscan - 17 lines total
@@ -252,13 +261,13 @@ MainLoop:			; +3/3 from the JMP that gets here
 ; well within the 73 cycles before WSYNC.
 				;
 	LDA	#19		; +2/10
-	STA	_PIA_WT64T	; +4/14
+	STA	_RIOT_WT64T	; +4/14
 				;
 ; 1210 cycles available here	;
 				;
 	LDA	#0		;
 TimOverscan:			;
-	CMP	_PIA_RTIM	;
+	CMP	_RIOT_RTIM	;
 	BNE	TimOverscan	;
 				;
 	STA	_TIA_WSYNC	; +3/(?>76)
@@ -307,7 +316,7 @@ TimOverscan:			;
 ; before WSYNC.			;
 				;
 	LDA	#35		; +2/7 - load timer value
-	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
+	STA	_RIOT_WT64T	; +4/11 - and set it into the RIOT
 				;
 ; 2122 cycles available here	;
 				;
@@ -329,12 +338,13 @@ FillBarGfx:			;
 ; Wait for timer to expire	;
 	LDA	#0		;
 TimVblank:			;
-	CMP	_PIA_RTIM	;
+	CMP	_RIOT_RTIM	;
 	BNE	TimVblank	;
 				;
 	STA	_TIA_WSYNC	; +3/(?>76)
 ; End vblank line 28		;
 ; -------------------------------
+
 
 ; ######################
 ; #                    #
@@ -566,6 +576,7 @@ LinesRoller:			;
 	STA	_TIA_WSYNC	; +3/(3>76)
 ; End active line 191		;
 ; -------------------------------
+
 
 ; ######################
 ; #                    #
@@ -960,3 +971,4 @@ Colors1:
 	.word	Main
 
 ; 345678901234567890123456789012345678901234567890123456789012345678901234567890
+
