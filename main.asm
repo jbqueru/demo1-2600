@@ -147,19 +147,34 @@ _PIA_WT1024T	.equ	$297
 
 _PIA_RTIM	.equ	$284
 
-; -------------------------------
-; Zero-page layout
-	seg.u	zeropage
+; ####################
+; ####################
+; ###              ###
+; ###  RAM layout  ###
+; ###              ###
+; ####################
+; ####################
 
-_ZP_LINE_COUNT	.equ	$80
-_ZP_SIGPAL	.equ	$81	; high bits at $82
+; -------------------------------
+; Start variables for signature bar
+_ZP_SIGPAL	.equ	$80	; Address of 3rd line of raster palette
+				; Yup, that's a weird implementation detail
+; End variables for signature bar
+; -------------------------------
+
+; -------------------------------
+; Start variables for roller bar display
+_ZP_BARLINE	.equ	$82	;
 _ZP_BARGFX1	.equ	$83	; high bits at $84
 _ZP_BARGFX2	.equ	$85	; high bits at $86
 _ZP_BARGFX3	.equ	$87	; high bits at $88
 _ZP_BARGFX4	.equ	$89	; high bits at $8A
 _ZP_BARGFX5	.equ	$8B	; high bits at $8C
 _ZP_BARGFX6	.equ	$8D	; high bits at $8E
-_ZP_READ_LOGO	.equ	$8F
+_ZP_BARREAD	.equ	$8F
+_ZP_BAROFF	.equ	$90	; 60 bytes, to $CB
+; End variables for roller bar display
+; -------------------------------
 
 ; ########################
 ; ########################
@@ -239,7 +254,7 @@ MainLoop:			; +3/3 from the JMP that gets here
 	LDA	#19		; +2/10
 	STA	_PIA_WT64T	; +4/14
 				;
-; About 1200 cycles available here
+; 1210 cycles available here	;
 				;
 	LDA	#0		;
 TimOverscan:			;
@@ -294,8 +309,24 @@ TimOverscan:			;
 	LDA	#35		; +2/7 - load timer value
 	STA	_PIA_WT64T	; +4/11 - and set it into the PIA
 				;
-; about 2100 cycles available here
+; 2122 cycles available here	;
 				;
+	LDX	59		;
+FillBarGfx:			;
+	TXA			; 2/2
+	ASL			; 2/4
+	ASL			; 2/6
+	ASL			; 2/8
+	ASL			; 2/10
+	AND	#$30		; 2/12
+        STA	_ZP_BAROFF,X	; 4/16
+        DEX			; 2/18
+        BPL	FillBarGfx	; 3/21 (total loop 1259)
+				;
+	LDA	#0		;
+        STA	_ZP_BARREAD	;
+				;
+; Wait for timer to expire	;
 	LDA	#0		;
 TimVblank:			;
 	CMP	_PIA_RTIM	;
@@ -383,7 +414,7 @@ TimVblank:			;
 				;
 ; Prepare loop			;
 	LDY	#9		; +2/61
-	STY	_ZP_LINE_COUNT	; +3/64
+	STY	_ZP_BARLINE	; +3/64
 				;
 	LDX	#0		; +2/66
 				;
@@ -391,7 +422,7 @@ TimVblank:			;
 	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
 				;
 	STX	_TIA_VBLANK	; +3/72 turn blank off - as late as possible
-
+				;
 Line19To171:			;
 	STA	_TIA_WSYNC	; +3/(75>76) when falling through
 				; +3(25..26>76) when jumped to
@@ -406,15 +437,35 @@ Line19To171:			;
 ; -------------------------------
 ; Start active line 0, 19, 38, ... 171
 ; Update graphics pointers for this row of rollers
-	LDA	_ZP_LINE_COUNT	;
-	AND	#3		;
-	ASL			;
-	ASL			;
-	ASL			;
-	ASL			;
-	STA	_ZP_BARGFX2	;
+	LDX	_ZP_BARREAD	; 3/3
 				;
-	STA	_TIA_WSYNC	; +3/(?..76)
+	LDA	_ZP_BAROFF,X	; 4/10
+	STA	_ZP_BARGFX1	; 3/13
+	INX			; 2/15
+				;
+	LDA	_ZP_BAROFF,X	; 4/19
+	STA	_ZP_BARGFX2	; 3/22
+	INX			; 2/24
+				;
+	LDA	_ZP_BAROFF,X	; 4/28
+	STA	_ZP_BARGFX3	; 3/31
+	INX			; 2/33
+				;
+	LDA	_ZP_BAROFF,X	; 4/37
+	STA	_ZP_BARGFX4	; 3/40
+	INX			; 2/42
+				;
+	LDA	_ZP_BAROFF,X	; 4/46
+	STA	_ZP_BARGFX5	; 3/49
+	INX			; 2/51
+				;
+	LDA	_ZP_BAROFF,X	; 4/55
+	STA	_ZP_BARGFX6	; 3/58
+	INX			; 2/60
+				;
+	STX	_ZP_BARREAD	; 3/63
+				;
+	STA	_TIA_WSYNC	; +3/(66>76)
 ; End active line 0, 19, 38, ... 171
 ; -------------------------------
 
@@ -495,7 +546,7 @@ LinesRoller:			;
 	STA	_TIA_COLUP0	; +3/10
 	STA	_TIA_COLUP1	; +3/13
 				;
-	DEC	_ZP_LINE_COUNT	; +5/18
+	DEC	_ZP_BARLINE	; +5/18
 	BPL	Line19To171	; Taken: +3..4/22..23
 				; WSYNC is borrowed from jump destination
 				; Not taken: +2/20
