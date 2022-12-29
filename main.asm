@@ -217,7 +217,7 @@ ClearZeroPage:
 
 ; Init logo
 ; TODO: possibly save a few bytes?
-	LDA	#(Bar00 >> 8)
+	LDA	#(Bar0 >> 8)
 	STA	_ZP_BARGFX1 + 1
 	STA	_ZP_BARGFX2 + 1
 	STA	_ZP_BARGFX3 + 1
@@ -326,7 +326,7 @@ FillBarGfx:			;
         LDA	MBLogo,Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
-	LDA	BarLookup,X	; +4/10
+	LDA	BarLookupOn,X	; +4/10
 	ASL			; +2/12
 	BCS	BarFixed	; Not taken +2/14 - critical path
 	ADC	_ZP_BARPHASE	; +3/17
@@ -883,77 +883,57 @@ MBLogo:
 ; 00 11 00 01 11 01 10 11 10 00 10 01 00
 
 	.align	$100,0
-Bar00:
-Bar0:	.repeat	16
-	.byte	$00
-	.repend
 
-Bar1:	.repeat	16
-	.byte	$FF
-	.repend
+Bar0:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar1:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar2:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar3:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar4:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar5:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar6:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar7:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar8:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar9:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar10:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar11:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar12:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
-Bar2:	.repeat	16
-	.byte	$00
-	.repend
-
-Bar3:	.repeat	16
-	.byte	$0F
-	.repend
-
-Bar4:	.repeat	16
-	.byte	$FF
-	.repend
-
-Bar5:	.repeat	16
-	.byte	$0F
-	.repend
-
-Bar6:	.repeat	16
-	.byte	$F0
-	.repend
-
-Bar7:	.repeat	16
-	.byte	$FF
-	.repend
-
-Bar8:	.repeat	16
-	.byte	$F0
-	.repend
-
-Bar9:	.repeat	16
-	.byte	$00
-	.repend
-
-Bar10:	.repeat	16
-	.byte	$F0
-	.repend
-
-Bar11:	.repeat	16
-	.byte	$0F
-	.repend
-
-Bar12:	.repeat	16
-	.byte	$00
-	.repend
-
-BarLookup:
+BarLookupOff:
 ; format: top bit = fixed roller. Next 4 bits: bits 4-7 of graphics address
-	.byte	%10000000	; 0000 - fixed bar 0
-	.byte	%00010000	; 0001 - rolling bar 2
-	.byte	%01001000	; 0010 - rolling bar 9
-	.byte	%00000000	; 0011 - rolling bar 0
-	.byte	%01011000	; 0100 - rolling bar 11
-	.byte	%10011000	; 0101 - fixed bar 3
-	.byte	%00101000	; 0110 - rolling bar 5
-	.byte	%00011000	; 0111 - rolling bar 3
-	.byte	%01000000	; 1000 - rolling bar 8
-	.byte	%01010000	; 1001 - rolling bar 10
-	.byte	%10110000	; 1010 - fixed bar 6
-	.byte	%00110000	; 1011 - rolling bar 6
-	.byte	%00001000	; 1100 - rolling bar 1
-	.byte	%00100000	; 1101 - rolling bar 4
-	.byte	%00111000	; 1110 - rolling bar 7
-	.byte	%10001000	; 1111 - fixed bar 1
+	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
+	.byte	2 << 3		; 0001 - rolling bar 2
+	.byte	9 << 3		; 0010 - rolling bar 9
+	.byte	0 << 3		; 0011 - rolling bar 0
+	.byte	11 << 3		; 0100 - rolling bar 11
+	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
+	.byte	5 << 3		; 0110 - rolling bar 5
+	.byte	3 << 3		; 0111 - rolling bar 3
+	.byte	8 << 3		; 1000 - rolling bar 8
+	.byte	10 << 3		; 1001 - rolling bar 10
+	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
+	.byte	6 << 3		; 1011 - rolling bar 6
+	.byte	1 << 3		; 1100 - rolling bar 1
+	.byte	4 << 3		; 1101 - rolling bar 4
+	.byte	7 << 3		; 1110 - rolling bar 7
+	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+
+BarLookupOn:
+	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
+	.byte	11 << 3		; 0100 - rolling bar 11
+	.byte	8 << 3		; 1000 - rolling bar 8
+	.byte	1 << 3		; 1100 - rolling bar 1
+	.byte	2 << 3		; 0001 - rolling bar 2
+	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
+	.byte	10 << 3		; 1001 - rolling bar 10
+	.byte	4 << 3		; 1101 - rolling bar 4
+	.byte	9 << 3		; 0010 - rolling bar 9
+	.byte	5 << 3		; 0110 - rolling bar 5
+	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
+	.byte	7 << 3		; 1110 - rolling bar 7
+	.byte	0 << 3		; 0011 - rolling bar 0
+	.byte	3 << 3		; 0111 - rolling bar 3
+	.byte	6 << 3		; 1011 - rolling bar 6
+	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
 
 	.align	$100,0
 ; Signature
