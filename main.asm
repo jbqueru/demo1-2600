@@ -317,21 +317,25 @@ TimOverscan:			;
 				;
 	LDA	#35		; +2/7 - load timer value
 	STA	_RIOT_WT64T	; +4/11 - and set it into the RIOT
+	; Start 2122 cycles	;
 				;
-; 2122 cycles available here	;
 				;
-	LDX	59		;
+	LDY	#59		;
 FillBarGfx:			;
-	TXA			; 2/2
-	ASL			; 2/4
-	ASL			; 2/6
-	ASL			; 2/8
-	ASL			; 2/10
-	AND	#$30		; 2/12
-        STA	_ZP_BAROFF,X	; 4/16
-        DEX			; 2/18
-        BPL	FillBarGfx	; 3/21 (total loop 1259)
+        LDA	MBLogo,Y	; +4/4
+				; TODO: ORA xxx - that's why it's in A
+	TAX			; +2/6
+	LDA	BarLookup,X	; +4/10
+	ASL			; +2/12
+	BCS	BarFixed	; Not taken +2/14 - critical path
+	ADC	#16		; +2/16	- TODO - variable
+BarFixed:			;
+	STA	_ZP_BAROFF,Y	; +5/21
+	DEY			; +2/23
+	BPL	FillBarGfx	; Taken +3/26
+				; Total 1561
 				;
+	; End 2122 cycles	;
 	LDA	#0		;
         STA	_ZP_BARREAD	;
 				;
@@ -845,35 +849,100 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; bar palette
 
 Pal1:
-	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E,$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
+	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
+	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
 
 Pal2:
 	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
 
-MBLogo:	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
-	.byte	$20,$20,$20,$00,$20,$20
+MBLogo:
+	.byte	%10,%00,%10,%00,%11,%01
+	.byte	%10,%10,%11,%00,%10,%10
+	.byte	%10,%10,%11,%00,%10,%10
+	.byte	%10,%01,%10,%00,%10,%10
+	.byte	%10,%01,%10,%00,%11,%01
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%11,%01
+
+; bar order
+; 00 01 02 03 04 05 06 07 08 09 10 11 12
+; 00 11 00 01 11 01 10 11 10 00 10 01 00
 
 	.align	$100,0
+Bar00:
+Bar0:	.repeat	16
+	.byte	$00
+	.repend
 
-Bar00:	.byte	0,0,0,0, 0,0,0,0
-	.byte	0,0,0,0, 0,0,0,0
+Bar1:	.repeat	16
+	.byte	$FF
+	.repend
 
-Bar01:	.byte	$F,$F,$F,$F, $F,$F,$F,$F
-	.byte	$F,$F,$F,$F, $F,$F,$F,$F
+Bar2:	.repeat	16
+	.byte	$00
+	.repend
 
-Bar10:	.byte	$F0,$F0,$F0,$F0, $F0,$F0,$F0,$F0
-	.byte	$F0,$F0,$F0,$F0, $F0,$F0,$F0,$F0
+Bar3:	.repeat	16
+	.byte	$0F
+	.repend
 
-Bar11:	.byte	$FF,$FF,$FF,$FF, $FF,$FF,$FF,$FF
-	.byte	$FF,$FF,$FF,$FF, $FF,$FF,$FF,$FF
+Bar4:	.repeat	16
+	.byte	$FF
+	.repend
+
+Bar5:	.repeat	16
+	.byte	$0F
+	.repend
+
+Bar6:	.repeat	16
+	.byte	$F0
+	.repend
+
+Bar7:	.repeat	16
+	.byte	$FF
+	.repend
+
+Bar8:	.repeat	16
+	.byte	$F0
+	.repend
+
+Bar9:	.repeat	16
+	.byte	$00
+	.repend
+
+Bar10:	.repeat	16
+	.byte	$F0
+	.repend
+
+Bar11:	.repeat	16
+	.byte	$0F
+	.repend
+
+Bar12:	.repeat	16
+	.byte	$00
+	.repend
+
+BarLookup:
+; format: top bit = fixed roller. Next 4 bits: bits 4-7 of graphics address
+	.byte	%10000000	; 0000 - fixed bar 0
+	.byte	%00010000	; 0001 - rolling bar 2
+	.byte	%01001000	; 0010 - rolling bar 9
+	.byte	%00000000	; 0011 - rolling bar 0
+	.byte	%01011000	; 0100 - rolling bar 11
+	.byte	%10011000	; 0101 - fixed bar 3
+	.byte	%00101000	; 0110 - rolling bar 5
+	.byte	%00011000	; 0111 - rolling bar 3
+	.byte	%01000000	; 1000 - rolling bar 8
+	.byte	%01010000	; 1001 - rolling bar 10
+	.byte	%10110000	; 1010 - fixed bar 6
+	.byte	%00110000	; 1011 - rolling bar 6
+	.byte	%00001000	; 1100 - rolling bar 1
+	.byte	%00100000	; 1101 - rolling bar 4
+	.byte	%00111000	; 1110 - rolling bar 7
+	.byte	%10001000	; 1111 - fixed bar 1
 
 	.align	$100,0
 ; Signature
@@ -971,4 +1040,3 @@ Colors1:
 	.word	Main
 
 ; 345678901234567890123456789012345678901234567890123456789012345678901234567890
-
