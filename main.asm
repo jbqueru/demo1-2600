@@ -185,6 +185,7 @@ _ZP_BARGFX5	.equ	$8B	; high bits at $8C
 _ZP_BARGFX6	.equ	$8D	; high bits at $8E
 _ZP_BARREAD	.equ	$8F	;
 _ZP_BAROFF	.equ	$90	; 60 bytes, to $CB
+_ZP_BARPHASE	.equ	$CC
 ; End variables for roller bar display
 ; -------------------------------
 
@@ -328,12 +329,19 @@ FillBarGfx:			;
 	LDA	BarLookup,X	; +4/10
 	ASL			; +2/12
 	BCS	BarFixed	; Not taken +2/14 - critical path
-	ADC	#16		; +2/16	- TODO - variable
+	ADC	_ZP_BARPHASE	; +3/17
+;	ADC	#6
 BarFixed:			;
-	STA	_ZP_BAROFF,Y	; +5/21
-	DEY			; +2/23
-	BPL	FillBarGfx	; Taken +3/26
-				; Total 1561
+	STA	_ZP_BAROFF,Y	; +5
+	DEY			; +2
+	BPL	FillBarGfx	; Taken +3
+				; 
+
+	LDA	_ZP_BARPHASE
+	ADC	#1
+	AND	#15
+	STA	_ZP_BARPHASE
+
 				;
 	; End 2122 cycles	;
 	LDA	#0		;
@@ -345,6 +353,9 @@ TimVblank:			;
 	CMP	_RIOT_RTIM	;
 	BNE	TimVblank	;
 				;
+	JMP	AlignCode1	;
+	.align	$100,$EA	; $EA is NOP
+AlignCode1:			;
 	STA	_TIA_WSYNC	; +3/(?>76)
 ; End vblank line 28		;
 ; -------------------------------
