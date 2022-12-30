@@ -244,6 +244,55 @@ ClearZeroPage:
 ; ##############################
 ; ##############################
 
+; ######################
+; #                    #
+; #  Rolling graphics  #
+; #                    #
+; ######################
+
+; This is a display of 10 rows or 10 rolling cylinders.
+;
+; The cylinders are a mix of background and playfield, 14 pixels wide
+; overall, separated by players and missiles.
+;
+; The players and missiles are set for a 3x close repeat
+;
+; Player 0 is at pixel 15, i.e. 15, 31, 47
+; Player 1 is at pixel 63, i.e. 63, 79, 95
+; Missile 0 is at pixel 95, i.e. 95, 111, 127
+; Missile 1 is at pixel 143, i.e. 143, 159, 15
+;
+; Those specific locations are chosen because they don't need any HMOVE
+;
+; Some of the missiles and players overlap, and player 0 has priority,
+; resulting in the following layout, which allows to set color 0 early
+; or late during the visible display:
+; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
+;
+; Each rolling cylinder has 16 visible lines, and there's a 3-line
+; gap between each row. The code for each row has 2 empty lines for
+; preparation, 16 lines of visible display, and 1 line of cleanup.
+; With 2 extra lines below and some preparation during vblank, this
+; covers the first 192 lines of active display.
+;
+; The display data is stored in RAM, as the low bytes of the pointers to the
+; data to be loaded into the PFn registers. Before each row of rollers, those
+; low bytes are copied into the actual pointers, ready for use in the tight
+; display loop.
+;
+; Computing the display data is done during Vblank. The core loop combines
+; essentially 3 sources: graphics before, graphics after, and roller offsets.
+; Graphics before and graphics after must be in different formats, one using
+; the low 2 bits and one the next 2 bits, so that a plain OR of the two can be
+; fed into a lookup. There are 2 lookup tables, depending on the ordering of
+; graphics before and after into thsoe bits. In turn, that allows to use the
+; same ROM data for before and after without having to shift it.
+;
+; The 3 sources can come from ROM, from RAM, or from code. There are different
+; routines for the different use cases. When one of the sources is RAM, it is
+; generated separately from the combination loop, for better performance because
+; of the very low register count.
+
 ; =========================
 ; Overscan - 17 lines total
 ; =========================
@@ -264,7 +313,8 @@ MainLoop:			; +3/3 from the JMP that gets here
 	LDA	#19		; +2/10
 	STA	_RIOT_WT64T	; +4/14
 				;
-; 1210 cycles available here	;
+	; Start 1210 cycles	;
+	; End 1210 cycles	;
 				;
 	LDA	#0		;
 TimOverscan:			;
@@ -330,18 +380,17 @@ FillBarGfx:			;
 	ASL			; +2/12
 	BCS	BarFixed	; Not taken +2/14 - critical path
 	ADC	_ZP_BARPHASE	; +3/17
-;	ADC	#6
 BarFixed:			;
 	STA	_ZP_BAROFF,Y	; +5
 	DEY			; +2
 	BPL	FillBarGfx	; Taken +3
-				; 
-
-	LDA	_ZP_BARPHASE
-	ADC	#1
-	AND	#15
-	STA	_ZP_BARPHASE
-
+				;
+				;
+	LDA	_ZP_BARPHASE	;
+	ADC	#$FF		;
+	AND	#15		;
+	STA	_ZP_BARPHASE	;
+				;
 				;
 	; End 2122 cycles	;
 	LDA	#0		;
@@ -359,38 +408,6 @@ AlignCode1:			;
 	STA	_TIA_WSYNC	; +3/(?>76)
 ; End vblank line 28		;
 ; -------------------------------
-
-
-; ######################
-; #                    #
-; #  Rolling graphics  #
-; #                    #
-; ######################
-
-; This is a display of 10 rows or 10 rolling cylinders.
-;
-; The cylinders are a mix of background and playfield, 14 pixels wide
-; overall, separated by players and missiles.
-;
-; The players and missiles are set for a 3x close repeat
-;
-; Player 0 is at pixel 15, i.e. 15, 31, 47
-; Player 1 is at pixel 63, i.e. 63, 79, 95
-; Missile 0 is at pixel 95, i.e. 95, 111, 127
-; Missile 1 is at pixel 143, i.e. 143, 159, 15
-;
-; Those specific locations are chosen because they don't need any HMOVE
-;
-; Some of the missiles and players overlap, and player 0 has priority,
-; resulting in the following layout, which allows to set color 0 early
-; or late during the visible display:
-; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
-;
-; Each rolling cylinder has 16 visible lines, and there's a 3-line
-; gap between each row. The code for each row has 2 empty lines for
-; preparation, 16 lines of visible display, and 1 line of cleanup.
-; With 2 extra lines below and some preparation during vblank, this
-; covers the first 192 lines of active display.
 
 ; -------------------------------
 ; Start vblank line 29		;
@@ -555,6 +572,7 @@ LinesRoller:			;
 	DEY			; +2/73
 	BPL	LinesRoller	; +3/76 when taken - exact sync
 				; MUST NOT CROSS PAGE BOUNDARY
+                                ; if it does, turn the STX.w into a plain STX
 				; +2/75 when falling through
 ; Near-perfect sync, ends 1 cycle early
 ; End active line 2..17, 21..36, 40..55, ... 173..188
