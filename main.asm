@@ -314,6 +314,27 @@ MainLoop:			; +3/3 from the JMP that gets here
 	STA	_RIOT_WT64T	; +4/14
 				;
 	; Start 1210 cycles	;
+				;
+	LDX	_ZP_BARPHASE	;
+	LDA	BarRotation,X	;
+	INX			;
+	CPX	#24		;
+	BNE	BarWrapped	;
+	LDX	#0		;
+BarWrapped:			;
+	STX	_ZP_BARPHASE	;
+				;
+	LDX	#0		;
+GenLoopY:			;
+	LDY	#5		;
+GenLoopX:			;
+	STA	_ZP_BAROFF,X	; +4
+	INX			; +2
+	DEY			; +2
+	BPL	GenLoopX	; +3 - total loop 13*6+1 = 79
+	CPX	#60		; +2
+	BNE	GenLoopY	; +3 - total loop 10*84+1 = 840
+				;
 	; End 1210 cycles	;
 				;
 	LDA	#0		;
@@ -379,17 +400,11 @@ FillBarGfx:			;
 	LDA	BarLookupOn,X	; +4/10
 	ASL			; +2/12
 	BCS	BarFixed	; Not taken +2/14 - critical path
-	ADC	_ZP_BARPHASE	; +3/17
+	ADC	_ZP_BAROFF,Y	; +4/18
 BarFixed:			;
-	STA	_ZP_BAROFF,Y	; +5
-	DEY			; +2
-	BPL	FillBarGfx	; Taken +3
-				;
-				;
-	LDA	_ZP_BARPHASE	;
-	ADC	#$FF		;
-	AND	#15		;
-	STA	_ZP_BARPHASE	;
+	STA	_ZP_BAROFF,Y	; +5/23
+	DEY			; +2/25
+	BPL	FillBarGfx	; Taken +3/28
 				;
 				;
 	; End 2122 cycles	;
@@ -952,6 +967,10 @@ BarLookupOn:
 	.byte	3 << 3		; 0111 - rolling bar 3
 	.byte	6 << 3		; 1011 - rolling bar 6
 	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+
+BarRotation:
+	.byte	16,16,16,15,15,14,14,13,12,11,10,9
+        .byte	8,7,6,5,4,3,2,2,1,1,0,0
 
 	.align	$100,0
 ; Signature
