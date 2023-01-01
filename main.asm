@@ -168,24 +168,35 @@ _RIOT_RTIM	.equ	$284
 ; ####################
 
 ; -------------------------------
+; Start variables for global state
+_ZP_MAINJMP1	.equ	$80
+_ZP_MAINJMP1_HI	.equ	$81
+_ZP_MAINJMP2	.equ	$82
+_ZP_MAINJMP2_HI	.equ	$83
+_ZP_MAINJMP3	.equ	$84
+_ZP_MAINJMP3_HI	.equ	$85
+; End variables for global state
+; -------------------------------
+
+; -------------------------------
 ; Start variables for signature bar
-_ZP_SIGPAL	.equ	$80	; Address of 3rd line of raster palette
+_ZP_SIGPAL	.equ	$88	; Address of 3rd line of raster palette
 				; Yup, that's a weird implementation detail
 ; End variables for signature bar
 ; -------------------------------
 
 ; -------------------------------
 ; Start variables for roller bar display
-_ZP_BARLINE	.equ	$82	;
-_ZP_BARGFX1	.equ	$83	; high bits at $84
-_ZP_BARGFX2	.equ	$85	; high bits at $86
-_ZP_BARGFX3	.equ	$87	; high bits at $88
-_ZP_BARGFX4	.equ	$89	; high bits at $8A
-_ZP_BARGFX5	.equ	$8B	; high bits at $8C
-_ZP_BARGFX6	.equ	$8D	; high bits at $8E
-_ZP_BARREAD	.equ	$8F	;
-_ZP_BAROFF	.equ	$90	; 60 bytes, to $CB
-_ZP_BARPHASE	.equ	$CC
+_ZP_BARGFX1	.equ	$90	; high bits at $91
+_ZP_BARGFX2	.equ	$92	; high bits at $93
+_ZP_BARGFX3	.equ	$94	; high bits at $95
+_ZP_BARGFX4	.equ	$96	; high bits at $97
+_ZP_BARGFX5	.equ	$98	; high bits at $99
+_ZP_BARGFX6	.equ	$9A	; high bits at $9B
+_ZP_BARSTEP	.equ	$9C	;
+_ZP_BARLINE	.equ	$9D	;
+_ZP_BARREAD	.equ	$9E	;
+_ZP_BAROFF	.equ	$A0	; 60 bytes, to $DB
 ; End variables for roller bar display
 ; -------------------------------
 
@@ -224,6 +235,12 @@ ClearZeroPage:
 	STA	_ZP_BARGFX4 + 1
 	STA	_ZP_BARGFX5 + 1
 	STA	_ZP_BARGFX6 + 1
+
+; Init jump target
+	LDA	#(PhaseInit & $FF)
+        STA	_ZP_MAINJMP1
+	LDA	#(PhaseInit >> 8)
+        STA	_ZP_MAINJMP1 + 1
 
 ; Set color pointer for signature background
 ; It's off-by-three because the index primarily counts lines in the sprite
@@ -313,28 +330,47 @@ MainLoop:			; +3/3 from the JMP that gets here
 	LDA	#19		; +2/10
 	STA	_RIOT_WT64T	; +4/14
 				;
-	; Start 1210 cycles	;
+	; Start 1210 cycles	; From here we count clocks since timer start
+
+; Jump to the phase-specific implementation of this 
+	JMP	(_ZP_MAINJMP1)	; +5/5
+
+PhaseInit:
+	LDA	#(BarPause1 & $FF)
+        STA	_ZP_MAINJMP1
+	LDA	#(BarPause1 >> 8)
+        STA	_ZP_MAINJMP1 + 1
+	LDA	#(BarPause2 & $FF)
+        STA	_ZP_MAINJMP2
+	LDA	#(BarPause2 >> 8)
+        STA	_ZP_MAINJMP2 + 1
+	LDA	#(BarDisplay & $FF)
+        STA	_ZP_MAINJMP3
+	LDA	#(BarDisplay >> 8)
+        STA	_ZP_MAINJMP3 + 1
+        
+	JMP	BarPause1
+
+BarPause1:
+	JMP	EndJmp1
+
+BarURotation1:
+	LDX	_ZP_BARSTEP	; +3/3
+	LDA	BarRotation,X	; +4/7
 				;
-	LDX	_ZP_BARPHASE	;
-	LDA	BarRotation,X	;
-	INX			;
-	CPX	#24		;
-	BNE	BarWrapped	;
-	LDX	#0		;
-BarWrapped:			;
-	STX	_ZP_BARPHASE	;
-				;
-	LDX	#0		;
+	LDX	#0		; +2/9
 GenLoopY:			;
-	LDY	#5		;
-GenLoopX:			;
-	STA	_ZP_BAROFF,X	; +4
-	INX			; +2
-	DEY			; +2
-	BPL	GenLoopX	; +3 - total loop 13*6+1 = 79
-	CPX	#60		; +2
-	BNE	GenLoopY	; +3 - total loop 10*84+1 = 840
+	LDY	#5		; + +2
+GenLoopX:			; |
+	STA	_ZP_BAROFF,X	; |+ +4
+	INX			; || +2
+	DEY			; || +2
+	BPL	GenLoopX	; |+ +3 - total loop 13*6-1 = 77
+	CPX	#60		; | +2
+	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
+	JMP	EndJmp1		; 
 				;
+EndJmp1:			;
 	; End 1210 cycles	;
 				;
 	LDA	#0		;
@@ -390,8 +426,23 @@ TimOverscan:			;
 	LDA	#35		; +2/7 - load timer value
 	STA	_RIOT_WT64T	; +4/11 - and set it into the RIOT
 	; Start 2122 cycles	;
+	JMP	(_ZP_MAINJMP2)	; +5/5
 				;
+; Begin independent clode block	;
+; Vblank lines 0-28		;
+BarPause2:			;
+	LDX	#59		;
+	LDA	#0		;
+FillBarPause:			;
+	STA	_ZP_BAROFF,X	;
+	DEY			;
+	BPL	FillBarPause	;
+	JMP	EndJmp2		;
+; End independent clode block	;
 				;
+; Begin independent clode block ;
+; Vblank lines 0-28		;
+BarURotation2:			;
 	LDY	#59		;
 FillBarGfx:			;
         LDA	MBLogo,Y	; +4/4
@@ -406,7 +457,17 @@ BarFixed:			;
 	DEY			; +2/25
 	BPL	FillBarGfx	; Taken +3/28
 				;
-				;
+	LDX	_ZP_BARSTEP	; TODO: move to jump 1
+        INX			;
+	CPX	#24		;
+	BNE	BarWrapped	;
+	LDX	#0		;
+BarWrapped:			;
+	STX	_ZP_BARSTEP	;
+	JMP	EndJmp2		;
+; End independent clode block	;
+
+EndJmp2:			;
 	; End 2122 cycles	;
 	LDA	#0		;
         STA	_ZP_BARREAD	;
@@ -417,9 +478,9 @@ TimVblank:			;
 	CMP	_RIOT_RTIM	;
 	BNE	TimVblank	;
 				;
-	JMP	AlignCode1	;
+	JMP	(_ZP_MAINJMP3)	;
 	.align	$100,$EA	; $EA is NOP
-AlignCode1:			;
+BarDisplay:			;
 	STA	_TIA_WSYNC	; +3/(?>76)
 ; End vblank line 28		;
 ; -------------------------------
@@ -605,6 +666,7 @@ LinesRoller:			;
 	STA	_TIA_COLUP1	; +3/13
 				;
 	DEC	_ZP_BARLINE	; +5/18
+				; TODO: re-use BARREAD? (should be 60 here)
 	BPL	Line19To171	; Taken: +3..4/22..23
 				; WSYNC is borrowed from jump destination
 				; Not taken: +2/20
