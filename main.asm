@@ -181,22 +181,30 @@ _ZP_MAINJMP3_HI	.equ	$85
 ; -------------------------------
 ; Start variables for signature bar
 _ZP_SIGPAL	.equ	$88	; Address of 3rd line of raster palette
-				; Yup, that's a weird implementation detail
+_ZP_SIGPAL_HI	.equ	$89	; Yup, that's a weird implementation detail
 ; End variables for signature bar
 ; -------------------------------
 
 ; -------------------------------
 ; Start variables for roller bar display
-_ZP_BARGFX1	.equ	$90	; high bits at $91
-_ZP_BARGFX2	.equ	$92	; high bits at $93
-_ZP_BARGFX3	.equ	$94	; high bits at $95
-_ZP_BARGFX4	.equ	$96	; high bits at $97
-_ZP_BARGFX5	.equ	$98	; high bits at $99
-_ZP_BARGFX6	.equ	$9A	; high bits at $9B
-_ZP_BARSTEP	.equ	$9C	;
-_ZP_BARLINE	.equ	$9D	;
-_ZP_BARREAD	.equ	$9E	;
-_ZP_BAROFF	.equ	$A0	; 60 bytes, to $DB
+_ZP_BARGFX1	.equ	$90
+_ZP_BARGFX1_HI	.equ	$91
+_ZP_BARGFX2	.equ	$92
+_ZP_BARGFX2_HI	.equ	$93
+_ZP_BARGFX3	.equ	$94
+_ZP_BARGFX3_HI	.equ	$95
+_ZP_BARGFX4	.equ	$96
+_ZP_BARGFX4_HI	.equ	$97
+_ZP_BARGFX5	.equ	$98
+_ZP_BARGFX5_HI	.equ	$99
+_ZP_BARGFX6	.equ	$9A
+_ZP_BARGFX6_HI	.equ	$9B
+_ZP_BARPHASE	.equ	$9C	; the phase in the sequence of screens
+_ZP_BARSTEP	.equ	$9D	; the step within the current phase
+_ZP_BARLINE	.equ	$9E	; counts the 10 row of rollers in display loop
+_ZP_BARREAD	.equ	$9F	; offset when reading buffer into pointers
+_ZP_BAROFF	.equ	$A0
+_ZP_BAROFF_END	.equ	$DB
 ; End variables for roller bar display
 ; -------------------------------
 
@@ -237,9 +245,9 @@ ClearZeroPage:
 	STA	_ZP_BARGFX6 + 1
 
 ; Init jump target
-	LDA	#(PhaseInit & $FF)
+	LDA	#(BarInit & $FF)
         STA	_ZP_MAINJMP1
-	LDA	#(PhaseInit >> 8)
+	LDA	#(BarInit >> 8)
         STA	_ZP_MAINJMP1 + 1
 
 ; Set color pointer for signature background
@@ -335,7 +343,9 @@ MainLoop:			; +3/3 from the JMP that gets here
 ; Jump to the phase-specific implementation of this 
 	JMP	(_ZP_MAINJMP1)	; +5/5
 
-PhaseInit:
+; Begin independent clode block	;
+; Overscan lines 0-16		;
+BarInit:
 	LDA	#(BarPause1 & $FF)
         STA	_ZP_MAINJMP1
 	LDA	#(BarPause1 >> 8)
@@ -348,12 +358,37 @@ PhaseInit:
         STA	_ZP_MAINJMP3
 	LDA	#(BarDisplay >> 8)
         STA	_ZP_MAINJMP3 + 1
-        
+
+	LDA	#0
+	STA	_ZP_BARPHASE
+	LDA	#60
+	STA	_ZP_BARSTEP
 	JMP	BarPause1
+; End independent clode block	;
 
+; Begin independent clode block	;
+; Overscan lines 0-16		;
 BarPause1:
+	DEC	_ZP_BARSTEP
+        BPL	StillInBarPause
+	LDA	#(BarURotation1 & $FF)
+        STA	_ZP_MAINJMP1
+	LDA	#(BarURotation1 >> 8)
+        STA	_ZP_MAINJMP1 + 1
+	LDA	#(BarURotation2 & $FF)
+        STA	_ZP_MAINJMP2
+	LDA	#(BarURotation2 >> 8)
+        STA	_ZP_MAINJMP2 + 1
+	LDA	#0
+	STA	_ZP_BARPHASE
+	STA	_ZP_BARSTEP
+        JMP	BarURotation1
+StillInBarPause:
 	JMP	EndJmp1
+; End independent clode block	;
 
+; Begin independent clode block	;
+; Overscan lines 0-16		;
 BarURotation1:
 	LDX	_ZP_BARSTEP	; +3/3
 	LDA	BarRotation,X	; +4/7
@@ -369,6 +404,7 @@ GenLoopX:			; |
 	CPX	#60		; | +2
 	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
 	JMP	EndJmp1		; 
+; End independent clode block	;
 				;
 EndJmp1:			;
 	; End 1210 cycles	;
@@ -437,6 +473,10 @@ FillBarPause:			;
 	STA	_ZP_BAROFF,X	;
 	DEY			;
 	BPL	FillBarPause	;
+				;
+	LDA	#0		;
+	STA	_ZP_BARREAD	;
+				;
 	JMP	EndJmp2		;
 ; End independent clode block	;
 				;
@@ -464,13 +504,15 @@ BarFixed:			;
 	LDX	#0		;
 BarWrapped:			;
 	STX	_ZP_BARSTEP	;
+
+	LDA	#0		;
+        STA	_ZP_BARREAD	;
+
 	JMP	EndJmp2		;
 ; End independent clode block	;
 
 EndJmp2:			;
 	; End 2122 cycles	;
-	LDA	#0		;
-        STA	_ZP_BARREAD	;
 				;
 ; Wait for timer to expire	;
 	LDA	#0		;
