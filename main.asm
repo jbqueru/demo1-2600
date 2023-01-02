@@ -183,8 +183,8 @@ _ZP_MAINJMP3_HI	.equ	$85
 
 ; -------------------------------
 ; Start variables for signature bar
-_ZP_SIGPAL	.equ	$88	; Address of 3rd line of raster palette
-_ZP_SIGPAL_HI	.equ	$89	; Yup, that's a weird implementation detail
+_ZP_SIGPAL	.equ	$86	; Address of 3rd line of raster palette
+_ZP_SIGPAL_HI	.equ	$87	; Yup, that's a weird implementation detail
 ; End variables for signature bar
 ; -------------------------------
 
@@ -282,13 +282,12 @@ MainLoop:			; +3/3 from the JMP that gets here
 	LDA	#19		; +2/10
 	STA	_RIOT_WT64T	; +4/14
 				;
-	; Start 1210 cycles	; From here we count clocks since timer start
+	; Start 1210 cycles	;
 				;
-; Jump to the phase-specific implementation of this 
+; Jump to the screen-specific implementation of this 
 	JMP	(_ZP_MAINJMP1)	; +5/5
-				;
-				;
 EndJmp1:			;
+				;
 	; End 1210 cycles	;
 				;
 	LDA	#0		;
@@ -324,9 +323,9 @@ TimOverscan:			;
 ; End vsync line 2		;
 ; -------------------------------
 
-; =======================
-; Vblank - 30 lines total
-; =======================
+; ======================================
+; Vblank + Active - 30 + 212 lines total
+; ======================================
 
 ; -------------------------------
 ; Start vblank line 0		;
@@ -344,10 +343,11 @@ TimOverscan:			;
 	LDA	#35		; +2/7 - load timer value
 	STA	_RIOT_WT64T	; +4/11 - and set it into the RIOT
 	; Start 2122 cycles	;
+				;
+; Jump to the screen-specific implementation of this 
 	JMP	(_ZP_MAINJMP2)	; +5/5
-
-
 EndJmp2:			;
+				;
 	; End 2122 cycles	;
 				;
 ; Wait for timer to expire	;
@@ -357,210 +357,7 @@ TimVblank:			;
 	BNE	TimVblank	;
 				;
 	JMP	(_ZP_MAINJMP3)	;
-	.align	$100,$EA	; $EA is NOP
-BarDisplay:			;
-	STA	_TIA_WSYNC	; +3/(?>76)
-; End vblank line 28		;
-; -------------------------------
-
-; -------------------------------
-; Start vblank line 29		;
-; Set up palette		;
-; Set up sprites		;
-;				;
-; Stop sprite delay		;
-	LDA	#$0		; +2/2
-	STA	_TIA_VDELP0	; +3/5
-	STA	_TIA_VDELP1	; +3/8
-				;
-; Disable sprite reflection	;
-	STA	_TIA_RESP0	; +3/11
-	STA	_TIA_RESP1	; +3/14
-				;
-; Color black (happens to be 0).;
-	STA	_TIA_COLUP0	; +3/17
-	STA	_TIA_COLUP1	; +3/20
-	STA	_TIA_COLUPF	; +3/23 - TODO - might not need this
-				;
-	; Interleave set P0 position
-	STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
-				;
-	STA	_TIA_COLUBK	; +3/29 - TODO - might not need this
-				;
-; Set sprite pattern (same for both players - 2 leftmost pixels)
-	LDA	#$C0		; +2/31
-	STA	_TIA_GRP0	; +3/34
-	STA	_TIA_GRP1	; +3/37
-				;
-; Set missile size / sprite repeat / enable missile (common bit 1).
-	LDA	#$13		; +2/39 - 2-pixel missile, 3 copies close
-				;
-	; Interleave set P1 position
-	STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
-				;
-	STA	_TIA_NUSIZ0	; +3/45
-	STA	_TIA_NUSIZ1	; +3/48
-	NOP			; +2/50
-				;
-	; Interleave set M0 position
-	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
-				;
-	STA	_TIA_ENAM0	; +3/56
-	STA	_TIA_ENAM1	; +3/59
-				;
-; Prepare loop			;
-	LDY	#9		; +2/61
-	STY	_ZP_BARLINE	; +3/64
-				;
-	LDX	#0		; +2/66
-				;
-	; Interleave set M1 position
-	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
-				;
-	STX	_TIA_VBLANK	; +3/72 turn blank off - as late as possible
-				;
-Line19To171:			;
-	STA	_TIA_WSYNC	; +3/(75>76) when falling through
-				; +3(25..26>76) when jumped to
-; End vblank line 29		;
-; Also end active line 18, 37, 56, ... 170 through jump
-; -------------------------------
-
-; ========================
-; Active - 212 lines total
-; ========================
-
-; -------------------------------
-; Start active line 0, 19, 38, ... 171
-; Update graphics pointers for this row of rollers
-	LDX	_ZP_BARREAD	; 3/3
-				;
-	LDA	_ZP_BAROFF,X	; 4/10
-	STA	_ZP_BARGFX1	; 3/13
-	INX			; 2/15
-				;
-	LDA	_ZP_BAROFF,X	; 4/19
-	STA	_ZP_BARGFX2	; 3/22
-	INX			; 2/24
-				;
-	LDA	_ZP_BAROFF,X	; 4/28
-	STA	_ZP_BARGFX3	; 3/31
-	INX			; 2/33
-				;
-	LDA	_ZP_BAROFF,X	; 4/37
-	STA	_ZP_BARGFX4	; 3/40
-	INX			; 2/42
-				;
-	LDA	_ZP_BAROFF,X	; 4/46
-	STA	_ZP_BARGFX5	; 3/49
-	INX			; 2/51
-				;
-	LDA	_ZP_BAROFF,X	; 4/55
-	STA	_ZP_BARGFX6	; 3/58
-	INX			; 2/60
-				;
-	STX	_ZP_BARREAD	; 3/63
-				;
-	STA	_TIA_WSYNC	; +3/(66>76)
-; End active line 0, 19, 38, ... 171
-; -------------------------------
-
-; -------------------------------
-; Start active line 1, 20, 39, ... 172
-; Set things up for line loop	;
-				;
-	; start 63-cycle NOP	;
-        LDX	#12		; +2/2
-	DEX			; +2*12
-	BNE	*-1		; +3*11+2/61
-	NOP			; +2/63
-	; end 63-cycle NOP	;
-				;
-	LDY	#15		; +2/65
-	LDA	Pal1+15		; +4/69
-	LDX	Pal2+15		; +4/73
-	STX	_TIA_COLUP0	; +3/76
-; Perfect sync			;
-; End active line 1, 20, 39, ... 172
-; -------------------------------
-
-; -------------------------------
-; Start active line 2..17, 21..36, 40..55, ... 173..188
-; Display 16 lines of rollers	;
-;				;
-; Must enter this loop with the following:
-; * A = background color	;
-; * X = player color		;
-; * P0 color already set	;
-LinesRoller:			;
-; Set the palette for this line (P0 has already been set)
-	STA	_TIA_COLUPF	; +3/3 COL=9 PIX=-57
-	ADC	#$2A		; +2/5
-	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
-	STX	_TIA_COLUP1	; +3/11 COL=33 PIX=-35
-				;
-; Update playfield graphics	;
-	LDA	(_ZP_BARGFX1),Y	; +5/16
-	STA	_TIA_PF0	; +3/19 COL=57 PIX=-11
-				; For playfield update, CPU min=-23/*53 max=21
-	LDA	(_ZP_BARGFX2),Y	; +5/24
-	STA	_TIA_PF1	; +3/27 COL=81 PIX=13
-				; For playfield update, CPU min=-12/*64 max=27
-	LDA	(_ZP_BARGFX3),Y	; +5/32
-	STA	_TIA_PF2	; +3/35 COL=105 PIX=37
-				; For playfield update, CPU min=-1/*75 max=37
-	LDA	(_ZP_BARGFX4),Y	; +5/40
-	STA	_TIA_PF0	; +3/43 COL=129 PIX=61
-				; For playfield update, CPU min=27 max=48
-	LDA	(_ZP_BARGFX5),Y	; +5/48
-	STA	_TIA_PF1	; +3/51 COL=153 PIX=85
-				; For playfield update, CPU min=37 max=53
-	LDA	(_ZP_BARGFX6),Y	; +5/56
-	STA	_TIA_PF2	; +3/59 COL=177 PIX=109
-				; For playfield update, CPU min=48 max=64
-				;
-; Prepare palette for next line	;
-	LDX	Pal2-1,Y	; +4/63
-	STX.w	_TIA_COLUP0	; +3/67 COL=201 PIX=133
-	LDA	Pal1-1,Y	; +4/71
-	DEY			; +2/73
-	BPL	LinesRoller	; +3/76 when taken - exact sync
-				; MUST NOT CROSS PAGE BOUNDARY
-                                ; if it does, turn the STX.w into a plain STX
-				; +2/75 when falling through
-; Near-perfect sync, ends 1 cycle early
-; End active line 2..17, 21..36, 40..55, ... 173..188
-; -------------------------------
-
-; -------------------------------
-; Start active line 18, 37, 56, ... 189
-; Starts 1 cycle early (see previous line)
-				;
-; Clear palette			;
-	LDA	#0		; +2/1
-	STA	_TIA_COLUBK	; +3/4
-	STA	_TIA_COLUPF	; +3/7
-	STA	_TIA_COLUP0	; +3/10
-	STA	_TIA_COLUP1	; +3/13
-				;
-	DEC	_ZP_BARLINE	; +5/18
-				; TODO: re-use BARREAD? (should be 60 here)
-	BPL	Line19To171	; Taken: +3..4/22..23
-				; WSYNC is borrowed from jump destination
-				; Not taken: +2/20
-				;
-	STA	_TIA_WSYNC	; +3/(23>76)
-; End active line 189		;
-; -------------------------------
-
-; -------------------------------
-; Start active line 190		;
-	STA	_TIA_WSYNC	; +3/(3>76)
-; End active line 190		;
-; -------------------------------
-
-; -------------------------------
-; Start active line 191		;
+EndJmp3:			;
 	STA	_TIA_WSYNC	; +3/(3>76)
 ; End active line 191		;
 ; -------------------------------
@@ -720,13 +517,13 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 				;
 ; Set the first 3 columns of sprite data
-	LDA	SigLogo1,Y		; +4/20
+	LDA	SigLogo1,Y	; +4/20
 	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1
 				;	oP0=X nP0=1 oP1=X nP1=X
-	LDA	SigLogo2,Y		; +4/27
+	LDA	SigLogo2,Y	; +4/27
 	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22
 				;	oP0=1 nP0=1 oP1=X nP1=2
-	LDA	SigLogo3,Y		; +4/34
+	LDA	SigLogo3,Y	; +4/34
 	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43
 				;	oP0=1 nP0=3 oP1=2 nP1=2
 				;
@@ -743,8 +540,8 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 				;
 ; Load sprite data for last 2 columns
-	LDX	SigLogo4,Y		; +4/51
-	LDA	SigLogo5,Y		; +4/55
+	LDX	SigLogo4,Y	; +4/51
+	LDA	SigLogo5,Y	; +4/55
 				;
 	NOP			; +2/57
 	NOP			; +2/59
@@ -982,7 +779,7 @@ BarLoopInitLogo:		;
         INX			;
         CPX	#12		;
         BNE	BarLoopInitLogo	;
-; Init bar phase
+; Init bar phase		;
 	LDA	#0		;
 	STA	_ZP_BARPHASE	;
 
@@ -1118,6 +915,212 @@ BarFixedOff:			;
 
 	JMP	EndJmp2		;
 ; End independent clode block	;
+
+	.align	$100,$EA	; $EA is NOP
+BarDisplay:			;
+	STA	_TIA_WSYNC	; +3/(?>76)
+; End vblank line 28		;
+; -------------------------------
+
+; -------------------------------
+; Start vblank line 29		;
+; Set up palette		;
+; Set up sprites		;
+;				;
+; Stop sprite delay		;
+	LDA	#$0		; +2/2
+	STA	_TIA_VDELP0	; +3/5
+	STA	_TIA_VDELP1	; +3/8
+				;
+; Disable sprite reflection	;
+	STA	_TIA_RESP0	; +3/11
+	STA	_TIA_RESP1	; +3/14
+				;
+; Color black (happens to be 0).;
+	STA	_TIA_COLUP0	; +3/17
+	STA	_TIA_COLUP1	; +3/20
+	STA	_TIA_COLUPF	; +3/23 - TODO - might not need this
+				;
+	; Interleave set P0 position
+	STA	_TIA_RESP0	; +3/26 COL=78 SPR=15
+				;
+	STA	_TIA_COLUBK	; +3/29 - TODO - might not need this
+				;
+; Set sprite pattern (same for both players - 2 leftmost pixels)
+	LDA	#$C0		; +2/31
+	STA	_TIA_GRP0	; +3/34
+	STA	_TIA_GRP1	; +3/37
+				;
+; Set missile size / sprite repeat / enable missile (common bit 1).
+	LDA	#$13		; +2/39 - 2-pixel missile, 3 copies close
+				;
+	; Interleave set P1 position
+	STA	_TIA_RESP1	; +3/42 COL=126 SPR=63
+				;
+	STA	_TIA_NUSIZ0	; +3/45
+	STA	_TIA_NUSIZ1	; +3/48
+	NOP			; +2/50
+				;
+	; Interleave set M0 position
+	STA	_TIA_RESM0	; +3/53 COL=159 MIS=95
+				;
+	STA	_TIA_ENAM0	; +3/56
+	STA	_TIA_ENAM1	; +3/59
+				;
+; Prepare loop			;
+	LDY	#9		; +2/61
+	STY	_ZP_BARLINE	; +3/64
+				;
+	LDX	#0		; +2/66
+				;
+	; Interleave set M1 position
+	STA	_TIA_RESM1	; +3/69 COL=207 MIS=143
+				;
+	STX	_TIA_VBLANK	; +3/72 turn blank off - as late as possible
+				;
+Line19To171:			;
+	STA	_TIA_WSYNC	; +3/(75>76) when falling through
+				; +3(25..26>76) when jumped to
+; End vblank line 29		;
+; Also end active line 18, 37, 56, ... 170 through jump
+; -------------------------------
+
+; ========================
+; Active - 212 lines total
+; ========================
+
+; -------------------------------
+; Start active line 0, 19, 38, ... 171
+; Update graphics pointers for this row of rollers
+	LDX	_ZP_BARREAD	; 3/3
+				;
+	LDA	_ZP_BAROFF,X	; 4/10
+	STA	_ZP_BARGFX1	; 3/13
+	INX			; 2/15
+				;
+	LDA	_ZP_BAROFF,X	; 4/19
+	STA	_ZP_BARGFX2	; 3/22
+	INX			; 2/24
+				;
+	LDA	_ZP_BAROFF,X	; 4/28
+	STA	_ZP_BARGFX3	; 3/31
+	INX			; 2/33
+				;
+	LDA	_ZP_BAROFF,X	; 4/37
+	STA	_ZP_BARGFX4	; 3/40
+	INX			; 2/42
+				;
+	LDA	_ZP_BAROFF,X	; 4/46
+	STA	_ZP_BARGFX5	; 3/49
+	INX			; 2/51
+				;
+	LDA	_ZP_BAROFF,X	; 4/55
+	STA	_ZP_BARGFX6	; 3/58
+	INX			; 2/60
+				;
+	STX	_ZP_BARREAD	; 3/63
+				;
+	STA	_TIA_WSYNC	; +3/(66>76)
+; End active line 0, 19, 38, ... 171
+; -------------------------------
+
+; -------------------------------
+; Start active line 1, 20, 39, ... 172
+; Set things up for line loop	;
+				;
+	; start 63-cycle NOP	;
+        LDX	#12		; +2/2
+	DEX			; +2*12
+	BNE	*-1		; +3*11+2/61
+	NOP			; +2/63
+	; end 63-cycle NOP	;
+				;
+	LDY	#15		; +2/65
+	LDA	Pal1+15		; +4/69
+	LDX	Pal2+15		; +4/73
+	STX	_TIA_COLUP0	; +3/76
+; Perfect sync			;
+; End active line 1, 20, 39, ... 172
+; -------------------------------
+
+; -------------------------------
+; Start active line 2..17, 21..36, 40..55, ... 173..188
+; Display 16 lines of rollers	;
+;				;
+; Must enter this loop with the following:
+; * A = background color	;
+; * X = player color		;
+; * P0 color already set	;
+LinesRoller:			;
+; Set the palette for this line (P0 has already been set)
+	STA	_TIA_COLUPF	; +3/3 COL=9 PIX=-57
+	ADC	#$2A		; +2/5
+	STA	_TIA_COLUBK	; +3/8 COL=24 PIX=-44
+	STX	_TIA_COLUP1	; +3/11 COL=33 PIX=-35
+				;
+; Update playfield graphics	;
+	LDA	(_ZP_BARGFX1),Y	; +5/16
+	STA	_TIA_PF0	; +3/19 COL=57 PIX=-11
+				; For playfield update, CPU min=-23/*53 max=21
+	LDA	(_ZP_BARGFX2),Y	; +5/24
+	STA	_TIA_PF1	; +3/27 COL=81 PIX=13
+				; For playfield update, CPU min=-12/*64 max=27
+	LDA	(_ZP_BARGFX3),Y	; +5/32
+	STA	_TIA_PF2	; +3/35 COL=105 PIX=37
+				; For playfield update, CPU min=-1/*75 max=37
+	LDA	(_ZP_BARGFX4),Y	; +5/40
+	STA	_TIA_PF0	; +3/43 COL=129 PIX=61
+				; For playfield update, CPU min=27 max=48
+	LDA	(_ZP_BARGFX5),Y	; +5/48
+	STA	_TIA_PF1	; +3/51 COL=153 PIX=85
+				; For playfield update, CPU min=37 max=53
+	LDA	(_ZP_BARGFX6),Y	; +5/56
+	STA	_TIA_PF2	; +3/59 COL=177 PIX=109
+				; For playfield update, CPU min=48 max=64
+				;
+; Prepare palette for next line	;
+	LDX	Pal2-1,Y	; +4/63
+	STX.w	_TIA_COLUP0	; +3/67 COL=201 PIX=133
+	LDA	Pal1-1,Y	; +4/71
+	DEY			; +2/73
+	BPL	LinesRoller	; +3/76 when taken - exact sync
+				; MUST NOT CROSS PAGE BOUNDARY
+                                ; if it does, turn the STX.w into a plain STX
+				; +2/75 when falling through
+; Near-perfect sync, ends 1 cycle early
+; End active line 2..17, 21..36, 40..55, ... 173..188
+; -------------------------------
+
+; -------------------------------
+; Start active line 18, 37, 56, ... 189
+; Starts 1 cycle early (see previous line)
+				;
+; Clear palette			;
+	LDA	#0		; +2/1
+	STA	_TIA_COLUBK	; +3/4
+	STA	_TIA_COLUPF	; +3/7
+	STA	_TIA_COLUP0	; +3/10
+	STA	_TIA_COLUP1	; +3/13
+				;
+	DEC	_ZP_BARLINE	; +5/18
+				; TODO: re-use BARREAD? (should be 60 here)
+	BPL	Line19To171	; Taken: +3..4/22..23
+				; WSYNC is borrowed from jump destination
+				; Not taken: +2/20
+				;
+	STA	_TIA_WSYNC	; +3/(23>76)
+; End active line 189		;
+; -------------------------------
+
+; -------------------------------
+; Start active line 190		;
+	STA	_TIA_WSYNC	; +3/(3>76)
+; End active line 190		;
+; -------------------------------
+
+; -------------------------------
+; Start active line 191		;
+	JMP	EndJmp3		;
 
 
 ; bar palette
