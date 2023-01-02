@@ -237,16 +237,6 @@ ClearZeroPage:
 	INX
 	BNE	ClearZeroPage
 
-; Init logo
-; TODO: possibly save a few bytes?
-	LDA	#(Bar0 >> 8)
-	STA	_ZP_BARGFX1 + 1
-	STA	_ZP_BARGFX2 + 1
-	STA	_ZP_BARGFX3 + 1
-	STA	_ZP_BARGFX4 + 1
-	STA	_ZP_BARGFX5 + 1
-	STA	_ZP_BARGFX6 + 1
-
 ; Init jump target
 	LDA	#(BarInit & $FF)
         STA	_ZP_MAINJMP1
@@ -349,6 +339,16 @@ MainLoop:			; +3/3 from the JMP that gets here
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 BarInit:			;
+; Init logo pointers
+	LDA	#(Bar0 >> 8)
+        LDX	#0
+BarLoopInitLogo:
+	STA	_ZP_BARGFX1_HI,X
+        INX
+        INX
+        CPX	#12
+        BNE	BarLoopInitLogo
+
 	LDA	#(BarBlank1 & $FF)
         STA	_ZP_MAINJMP1	;
 	LDA	#(BarBlank1 >> 8)
