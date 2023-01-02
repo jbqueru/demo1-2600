@@ -247,9 +247,9 @@ ClearZeroPage:
 ; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
 ; (i.e. at addresses before that of line 0).
-	LDA	#(Colors1 + 3 & $FF)
+	LDA	#(SigColors + 3 & $FF)
 	STA	_ZP_SIGPAL
-	LDA	#(Colors1 + 3 >> 8)
+	LDA	#(SigColors + 3 >> 8)
 	STA	_ZP_SIGPAL + 1
 
 
@@ -912,13 +912,13 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF2	; +3/16 COL=48 PIX=-20
 				;
 ; Set the first 3 columns of sprite data
-	LDA	Logo1,Y		; +4/20
+	LDA	SigLogo1,Y		; +4/20
 	STA	_TIA_GRP0	; +3/23 COL=69 PIX=1
 				;	oP0=X nP0=1 oP1=X nP1=X
-	LDA	Logo2,Y		; +4/27
+	LDA	SigLogo2,Y		; +4/27
 	STA	_TIA_GRP1	; +3/30 COL=90 PIX=22
 				;	oP0=1 nP0=1 oP1=X nP1=2
-	LDA	Logo3,Y		; +4/34
+	LDA	SigLogo3,Y		; +4/34
 	STA	_TIA_GRP0	; +3/37 COL=111 PIX=43
 				;	oP0=1 nP0=3 oP1=2 nP1=2
 				;
@@ -935,8 +935,8 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 	STA	_TIA_PF2	; +3/47 COL=141 PIX=73
 				;
 ; Load sprite data for last 2 columns
-	LDX	Logo4,Y		; +4/51
-	LDA	Logo5,Y		; +4/55
+	LDX	SigLogo4,Y		; +4/51
+	LDA	SigLogo5,Y		; +4/55
 				;
 	NOP			; +2/57
 	NOP			; +2/59
@@ -1022,11 +1022,11 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Continue overscan line 0 up	;
 ; -------------------------------
 
+; Signature data
+; LOGO SLICES MUST NO CROSS PAGE BOUNDARY
 	.align	$100,0
-; Signature
-; MUST NO CROSS PAGE BOUNDARY
 
-Logo1:
+SigLogo1:
 	.byte	%11111111
 	.byte	%11111111
 	.byte	%10011000
@@ -1042,7 +1042,7 @@ Logo1:
 	.byte	%11111111
 	.byte	%11111111
 
-Logo2:
+SigLogo2:
 	.byte	%11111110
 	.byte	%11111110
 	.byte	%11100010
@@ -1058,7 +1058,7 @@ Logo2:
 	.byte	%11111110
 	.byte	%11111110
 
-Logo3:
+SigLogo3:
 	.byte	%11000100
 	.byte	%11100100
 	.byte	%01100100
@@ -1074,7 +1074,7 @@ Logo3:
 	.byte	%00010101
 	.byte	%00010101
 
-Logo4:
+SigLogo4:
 	.byte	%01101111
 	.byte	%11101111
 	.byte	%11001011
@@ -1090,7 +1090,7 @@ Logo4:
 	.byte	%00001111
 	.byte	%00001111
 
-Logo5:
+SigLogo5:
 	.byte	%11111111
 	.byte	%11111111
 	.byte	%10100011
@@ -1106,7 +1106,7 @@ Logo5:
 	.byte	%11111111
 	.byte	%11111111
 
-Colors1:
+SigColors:
 	.byte	$62,$64,$62
         .byte	$64,$66,$64,$66,$68,$66,$68,$68,$66,$68,$66,$64,$66,$64
         .byte	$62,$64,$62
