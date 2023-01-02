@@ -262,55 +262,6 @@ ClearZeroPage:
 ; ##############################
 ; ##############################
 
-; ######################
-; #                    #
-; #  Rolling graphics  #
-; #                    #
-; ######################
-
-; This is a display of 10 rows or 10 rolling cylinders.
-;
-; The cylinders are a mix of background and playfield, 14 pixels wide
-; overall, separated by players and missiles.
-;
-; The players and missiles are set for a 3x close repeat
-;
-; Player 0 is at pixel 15, i.e. 15, 31, 47
-; Player 1 is at pixel 63, i.e. 63, 79, 95
-; Missile 0 is at pixel 95, i.e. 95, 111, 127
-; Missile 1 is at pixel 143, i.e. 143, 159, 15
-;
-; Those specific locations are chosen because they don't need any HMOVE
-;
-; Some of the missiles and players overlap, and player 0 has priority,
-; resulting in the following layout, which allows to set color 0 early
-; or late during the visible display:
-; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
-;
-; Each rolling cylinder has 16 visible lines, and there's a 3-line
-; gap between each row. The code for each row has 2 empty lines for
-; preparation, 16 lines of visible display, and 1 line of cleanup.
-; With 2 extra lines below and some preparation during vblank, this
-; covers the first 192 lines of active display.
-;
-; The display data is stored in RAM, as the low bytes of the pointers to the
-; data to be loaded into the PFn registers. Before each row of rollers, those
-; low bytes are copied into the actual pointers, ready for use in the tight
-; display loop.
-;
-; Computing the display data is done during Vblank. The core loop combines
-; essentially 3 sources: graphics before, graphics after, and roller offsets.
-; Graphics before and graphics after must be in different formats, one using
-; the low 2 bits and one the next 2 bits, so that a plain OR of the two can be
-; fed into a lookup. There are 2 lookup tables, depending on the ordering of
-; graphics before and after into thsoe bits. In turn, that allows to use the
-; same ROM data for before and after without having to shift it.
-;
-; The 3 sources can come from ROM, from RAM, or from code. There are different
-; routines for the different use cases. When one of the sources is RAM, it is
-; generated separately from the combination loop, for better performance because
-; of the very low register count.
-
 ; =========================
 ; Overscan - 17 lines total
 ; =========================
@@ -332,92 +283,10 @@ MainLoop:			; +3/3 from the JMP that gets here
 	STA	_RIOT_WT64T	; +4/14
 				;
 	; Start 1210 cycles	; From here we count clocks since timer start
-
+				;
 ; Jump to the phase-specific implementation of this 
 	JMP	(_ZP_MAINJMP1)	; +5/5
-
-; Begin independent clode block	;
-; Overscan lines 0-16		;
-; 1205 cycles available		;
-BarInit:			;
-; Init logo pointers		;
-	LDA	#(Bar0 >> 8)	;
-        LDX	#0		;
-BarLoopInitLogo:		;
-	STA	_ZP_BARGFX1_HI,X;
-        INX			;
-        INX			;
-        CPX	#12		;
-        BNE	BarLoopInitLogo	;
-; Init bar phase
-	LDA	#0		;
-	STA	_ZP_BARPHASE	;
-
-	LDA	#(BarBlank1 & $FF)
-        STA	_ZP_MAINJMP1	;
-	LDA	#(BarBlank1 >> 8)
-        STA	_ZP_MAINJMP1 + 1;
-	LDA	#(BarBlank2 & $FF)
-        STA	_ZP_MAINJMP2	;
-	LDA	#(BarBlank2 >> 8)
-        STA	_ZP_MAINJMP2 + 1;
-	LDA	#(BarDisplay & $FF)
-        STA	_ZP_MAINJMP3	;
-	LDA	#(BarDisplay >> 8)
-        STA	_ZP_MAINJMP3 + 1;
 				;
-	LDA	#60		;
-	STA	_ZP_BARSTEP	;
-	JMP	BarBlank1	;
-; End independent clode block	;
-
-; Begin independent clode block	;
-; Overscan lines 0-16		;
-BarBlank1:			;
-	DEC	_ZP_BARSTEP	;
-        BPL	StillInBarPause	;
-	LDA	#(BarBitmapOnOff1 & $FF)
-        STA	_ZP_MAINJMP1	;
-	LDA	#(BarBitmapOnOff1 >> 8)
-        STA	_ZP_MAINJMP1 + 1;
-	LDA	#(BarBitmapOn2 & $FF)
-        STA	_ZP_MAINJMP2	;
-	LDA	#(BarBitmapOn2 >> 8)
-        STA	_ZP_MAINJMP2 + 1;
-	LDA	#0		;
-	STA	_ZP_BARSTEP	;
-        JMP	BarBitmapOnOff1	;
-StillInBarPause:		;
-	JMP	EndJmp1		;
-; End independent clode block	;
-
-; Begin independent clode block	;
-; Overscan lines 0-16		;
-BarBitmapOnOff1:
-	LDX	_ZP_BARSTEP	; +3/3
-	LDA	BarRotation,X	; +4/7
-				;
-	LDX	#0		; +2/9
-GenLoopY:			;
-	LDY	#5		; + +2
-GenLoopX:			; |
-	STA	_ZP_BAROFF,X	; |+ +4
-	INX			; || +2
-	DEY			; || +2
-	BPL	GenLoopX	; |+ +3 - total loop 13*6-1 = 77
-	CPX	#60		; | +2
-	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
-				;
-	LDX	_ZP_BARSTEP	;
-        INX			;
-	CPX	#25		;
-	BNE	BarWrapped	;
-	LDX	#0		;
-BarWrapped:			;
-	STX	_ZP_BARSTEP	;
-				;
-	JMP	EndJmp1		;
-; End independent clode block	;
 				;
 EndJmp1:			;
 	; End 1210 cycles	;
@@ -476,68 +345,7 @@ TimOverscan:			;
 	STA	_RIOT_WT64T	; +4/11 - and set it into the RIOT
 	; Start 2122 cycles	;
 	JMP	(_ZP_MAINJMP2)	; +5/5
-				;
-; Begin independent clode block	;
-; Vblank lines 0-28		;
-BarBlank2:			;
-	LDX	#59		;
-	LDA	#0		;
-FillBarPause:			;
-	STA	_ZP_BAROFF,X	;
-	DEY			;
-	BPL	FillBarPause	;
-				;
-	LDA	#0		;
-	STA	_ZP_BARREAD	;
-				;
-	JMP	EndJmp2		;
-; End independent clode block	;
 
-; Begin independent clode block ;
-; Vblank lines 0-28		;
-BarBitmapOn2:			;
-	LDY	#59		;
-FillBarGfxOn:			;
-        LDA	MBLogo,Y	; +4/4
-				; TODO: ORA xxx - that's why it's in A
-	TAX			; +2/6
-	LDA	BarLookupOn,X	; +4/10
-	ASL			; +2/12
-	BCS	BarFixedOn	; Not taken +2/14 - critical path
-	ADC	_ZP_BAROFF,Y	; +4/18
-BarFixedOn:			;
-	STA	_ZP_BAROFF,Y	; +5/23
-	DEY			; +2/25
-	BPL	FillBarGfxOn	; Taken +3/28
-				;
-	LDA	#0		;
-        STA	_ZP_BARREAD	;
-
-	JMP	EndJmp2		;
-; End independent clode block	;
-
-; Begin independent clode block ;
-; Vblank lines 0-28		;
-BarBitmapOff2:			;
-	LDY	#59		;
-FillBarGfxOff:			;
-        LDA	MBLogo,Y	; +4/4
-				; TODO: ORA xxx - that's why it's in A
-	TAX			; +2/6
-	LDA	BarLookupOff,X	; +4/10
-	ASL			; +2/12
-	BCS	BarFixedOff	; Not taken +2/14 - critical path
-	ADC	_ZP_BAROFF,Y	; +4/18
-BarFixedOff:			;
-	STA	_ZP_BAROFF,Y	; +5/23
-	DEY			; +2/25
-	BPL	FillBarGfxOff	; Taken +3/28
-				;
-	LDA	#0		;
-        STA	_ZP_BARREAD	;
-
-	JMP	EndJmp2		;
-; End independent clode block	;
 
 EndJmp2:			;
 	; End 2122 cycles	;
@@ -1112,6 +920,205 @@ SigColors:
         .byte	$62,$64,$62
 
 
+; ##################
+; #                #
+; #  Rolling bars  #
+; #                #
+; ##################
+
+; This is a display of 10 rows or 10 rolling cylinders.
+;
+; The cylinders are a mix of background and playfield, 14 pixels wide
+; overall, separated by players and missiles.
+;
+; The players and missiles are set for a 3x close repeat
+;
+; Player 0 is at pixel 15, i.e. 15, 31, 47
+; Player 1 is at pixel 63, i.e. 63, 79, 95
+; Missile 0 is at pixel 95, i.e. 95, 111, 127
+; Missile 1 is at pixel 143, i.e. 143, 159, 15
+;
+; Those specific locations are chosen because they don't need any HMOVE
+;
+; Some of the missiles and players overlap, and player 0 has priority,
+; resulting in the following layout, which allows to set color 0 early
+; or late during the visible display:
+; 1 - 0 - 0 - 0 - 1 - 1 - 0 - 0 - 0 - 1 - 1
+;
+; Each rolling cylinder has 16 visible lines, and there's a 3-line
+; gap between each row. The code for each row has 2 empty lines for
+; preparation, 16 lines of visible display, and 1 line of cleanup.
+; With 2 extra lines below and some preparation during vblank, this
+; covers the first 192 lines of active display.
+;
+; The display data is stored in RAM, as the low bytes of the pointers to the
+; data to be loaded into the PFn registers. Before each row of rollers, those
+; low bytes are copied into the actual pointers, ready for use in the tight
+; display loop.
+;
+; Computing the display data is done during Vblank. The core loop combines
+; essentially 3 sources: graphics before, graphics after, and roller offsets.
+; Graphics before and graphics after must be in different formats, one using
+; the low 2 bits and one the next 2 bits, so that a plain OR of the two can be
+; fed into a lookup. There are 2 lookup tables, depending on the ordering of
+; graphics before and after into thsoe bits. In turn, that allows to use the
+; same ROM data for before and after without having to shift it.
+;
+; The 3 sources can come from ROM, from RAM, or from code. There are different
+; routines for the different use cases. When one of the sources is RAM, it is
+; generated separately from the combination loop, for better performance because
+; of the very low register count.
+
+; Begin independent clode block	;
+; Overscan lines 0-16		;
+; 1205 cycles available		;
+BarInit:			;
+; Init logo pointers		;
+	LDA	#(Bar0 >> 8)	;
+        LDX	#0		;
+BarLoopInitLogo:		;
+	STA	_ZP_BARGFX1_HI,X;
+        INX			;
+        INX			;
+        CPX	#12		;
+        BNE	BarLoopInitLogo	;
+; Init bar phase
+	LDA	#0		;
+	STA	_ZP_BARPHASE	;
+
+	LDA	#(BarBlank1 & $FF)
+        STA	_ZP_MAINJMP1	;
+	LDA	#(BarBlank1 >> 8)
+        STA	_ZP_MAINJMP1 + 1;
+	LDA	#(BarBlank2 & $FF)
+        STA	_ZP_MAINJMP2	;
+	LDA	#(BarBlank2 >> 8)
+        STA	_ZP_MAINJMP2 + 1;
+	LDA	#(BarDisplay & $FF)
+        STA	_ZP_MAINJMP3	;
+	LDA	#(BarDisplay >> 8)
+        STA	_ZP_MAINJMP3 + 1;
+				;
+	LDA	#60		;
+	STA	_ZP_BARSTEP	;
+	JMP	BarBlank1	;
+; End independent clode block	;
+
+; Begin independent clode block	;
+; Overscan lines 0-16		;
+; 1205 cycles available		;
+BarBlank1:			;
+	DEC	_ZP_BARSTEP	;
+        BPL	StillInBarPause	;
+	LDA	#(BarBitmapOnOff1 & $FF)
+        STA	_ZP_MAINJMP1	;
+	LDA	#(BarBitmapOnOff1 >> 8)
+        STA	_ZP_MAINJMP1 + 1;
+	LDA	#(BarBitmapOn2 & $FF)
+        STA	_ZP_MAINJMP2	;
+	LDA	#(BarBitmapOn2 >> 8)
+        STA	_ZP_MAINJMP2 + 1;
+	LDA	#0		;
+	STA	_ZP_BARSTEP	;
+        JMP	BarBitmapOnOff1	;
+StillInBarPause:		;
+	JMP	EndJmp1		;
+; End independent clode block	;
+
+; Begin independent clode block	;
+; Overscan lines 0-16		;
+; 1205 cycles available		;
+BarBitmapOnOff1:		;
+	LDX	_ZP_BARSTEP	; +3/3
+	LDA	BarRotation,X	; +4/7
+				;
+	LDX	#0		; +2/9
+GenLoopY:			;
+	LDY	#5		; + +2
+GenLoopX:			; |
+	STA	_ZP_BAROFF,X	; |+ +4
+	INX			; || +2
+	DEY			; || +2
+	BPL	GenLoopX	; |+ +3 - total loop 13*6-1 = 77
+	CPX	#60		; | +2
+	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
+				;
+	LDX	_ZP_BARSTEP	;
+        INX			;
+	CPX	#25		;
+	BNE	BarWrapped	;
+	LDX	#0		;
+BarWrapped:			;
+	STX	_ZP_BARSTEP	;
+				;
+	JMP	EndJmp1		;
+; End independent clode block	;
+
+; Begin independent clode block	;
+; Vblank lines 0-28		;
+; 2117 cycles available		;
+BarBlank2:			;
+	LDX	#59		;
+	LDA	#0		;
+FillBarPause:			;
+	STA	_ZP_BAROFF,X	;
+	DEY			;
+	BPL	FillBarPause	;
+				;
+	LDA	#0		;
+	STA	_ZP_BARREAD	;
+				;
+	JMP	EndJmp2		;
+; End independent clode block	;
+
+; Begin independent clode block ;
+; Vblank lines 0-28		;
+; 2117 cycles available		;
+BarBitmapOn2:			;
+	LDY	#59		;
+FillBarGfxOn:			;
+        LDA	MBLogo,Y	; +4/4
+				; TODO: ORA xxx - that's why it's in A
+	TAX			; +2/6
+	LDA	BarLookupOn,X	; +4/10
+	ASL			; +2/12
+	BCS	BarFixedOn	; Not taken +2/14 - critical path
+	ADC	_ZP_BAROFF,Y	; +4/18
+BarFixedOn:			;
+	STA	_ZP_BAROFF,Y	; +5/23
+	DEY			; +2/25
+	BPL	FillBarGfxOn	; Taken +3/28
+				;
+	LDA	#0		;
+        STA	_ZP_BARREAD	;
+
+	JMP	EndJmp2		;
+; End independent clode block	;
+
+; Begin independent clode block ;
+; Vblank lines 0-28		;
+; 2117 cycles available		;
+BarBitmapOff2:			;
+	LDY	#59		;
+FillBarGfxOff:			;
+        LDA	MBLogo,Y	; +4/4
+				; TODO: ORA xxx - that's why it's in A
+	TAX			; +2/6
+	LDA	BarLookupOff,X	; +4/10
+	ASL			; +2/12
+	BCS	BarFixedOff	; Not taken +2/14 - critical path
+	ADC	_ZP_BAROFF,Y	; +4/18
+BarFixedOff:			;
+	STA	_ZP_BAROFF,Y	; +5/23
+	DEY			; +2/25
+	BPL	FillBarGfxOff	; Taken +3/28
+				;
+	LDA	#0		;
+        STA	_ZP_BARREAD	;
+
+	JMP	EndJmp2		;
+; End independent clode block	;
+
 
 ; bar palette
 
@@ -1195,9 +1202,21 @@ BarRotation:
 	.byte	16,16,16,15,15,14,14,13,12,11,10,9
         .byte	8,7,6,5,4,3,2,2,1,1,0,0
 
+; ###############################
+; ###############################
+; ###                         ###
+; ###  Reset / Start vectors  ###
+; ###                         ###
+; ###############################
+; ###############################
 ; Reset / Start vectors
-	.org	$FFFC
-	.word	Main
-	.word	Main
+	.org	$FFFA
+	.word	EmptyInterrupt	; NMI / BRK
+	.word	Main		; Reset / Start
+EmptyInterrupt:
+	RTI
+EmptySubroutine:
+	RTS
+
 
 ; 345678901234567890123456789012345678901234567890123456789012345678901234567890
