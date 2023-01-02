@@ -1,4 +1,7 @@
-; Copyright 2022 Jean-Baptiste M. "JBQ" "Djaybee" Queru
+; SPDX-License-Identifier: Apache-2.0
+;
+; Portions Copyright 2022 Jean-Baptiste M. "JBQ" "Djaybee" Queru
+; Portions Copyright 2023 Jean-Baptiste M. "JBQ" "Djaybee" Queru
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");
 ; you may not use this file except in compliance with the License.
@@ -371,9 +374,9 @@ BarInit:			;
 BarBlank1:			;
 	DEC	_ZP_BARSTEP	;
         BPL	StillInBarPause	;
-	LDA	#(BarBitmapOn1 & $FF)
+	LDA	#(BarBitmapOnOff1 & $FF)
         STA	_ZP_MAINJMP1	;
-	LDA	#(BarBitmapOn1 >> 8)
+	LDA	#(BarBitmapOnOff1 >> 8)
         STA	_ZP_MAINJMP1 + 1;
 	LDA	#(BarBitmapOn2 & $FF)
         STA	_ZP_MAINJMP2	;
@@ -381,14 +384,14 @@ BarBlank1:			;
         STA	_ZP_MAINJMP2 + 1;
 	LDA	#0		;
 	STA	_ZP_BARSTEP	;
-        JMP	BarBitmapOn1	;
+        JMP	BarBitmapOnOff1	;
 StillInBarPause:		;
 	JMP	EndJmp1		;
 ; End independent clode block	;
 
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
-BarBitmapOn1:
+BarBitmapOnOff1:
 	LDX	_ZP_BARSTEP	; +3/3
 	LDA	BarRotation,X	; +4/7
 				;
@@ -492,18 +495,41 @@ FillBarPause:			;
 ; Vblank lines 0-28		;
 BarBitmapOn2:			;
 	LDY	#59		;
-FillBarGfx:			;
+FillBarGfxOn:			;
         LDA	MBLogo,Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
 	LDA	BarLookupOn,X	; +4/10
 	ASL			; +2/12
-	BCS	BarFixed	; Not taken +2/14 - critical path
+	BCS	BarFixedOn	; Not taken +2/14 - critical path
 	ADC	_ZP_BAROFF,Y	; +4/18
-BarFixed:			;
+BarFixedOn:			;
 	STA	_ZP_BAROFF,Y	; +5/23
 	DEY			; +2/25
-	BPL	FillBarGfx	; Taken +3/28
+	BPL	FillBarGfxOn	; Taken +3/28
+				;
+	LDA	#0		;
+        STA	_ZP_BARREAD	;
+
+	JMP	EndJmp2		;
+; End independent clode block	;
+
+; Begin independent clode block ;
+; Vblank lines 0-28		;
+BarBitmapOff2:			;
+	LDY	#59		;
+FillBarGfxOff:			;
+        LDA	MBLogo,Y	; +4/4
+				; TODO: ORA xxx - that's why it's in A
+	TAX			; +2/6
+	LDA	BarLookupOff,X	; +4/10
+	ASL			; +2/12
+	BCS	BarFixedOff	; Not taken +2/14 - critical path
+	ADC	_ZP_BAROFF,Y	; +4/18
+BarFixedOff:			;
+	STA	_ZP_BAROFF,Y	; +5/23
+	DEY			; +2/25
+	BPL	FillBarGfxOff	; Taken +3/28
 				;
 	LDA	#0		;
         STA	_ZP_BARREAD	;
