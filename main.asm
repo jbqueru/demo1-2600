@@ -1022,88 +1022,6 @@ Line195To207:			; Steal that WSYNC as end of subsequent lines
 ; Continue overscan line 0 up	;
 ; -------------------------------
 
-; bar palette
-
-Pal1:
-	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
-	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
-
-Pal2:
-	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
-
-MBLogo:
-	.byte	%10,%00,%10,%00,%11,%01
-	.byte	%10,%10,%11,%00,%10,%10
-	.byte	%10,%10,%11,%00,%10,%10
-	.byte	%10,%01,%10,%00,%10,%10
-	.byte	%10,%01,%10,%00,%11,%01
-	.byte	%10,%00,%10,%00,%10,%10
-	.byte	%10,%00,%10,%00,%10,%10
-	.byte	%10,%00,%10,%00,%10,%10
-	.byte	%10,%00,%10,%00,%10,%10
-	.byte	%10,%00,%10,%00,%11,%01
-
-; bar order
-; 00 01 02 03 04 05 06 07 08 09 10 11 12
-; 00 11 00 01 11 01 10 11 10 00 10 01 00
-
-	.align	$100,0
-
-Bar0:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-Bar1:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-Bar2:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-Bar3:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
-Bar4:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-Bar5:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
-Bar6:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
-Bar7:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-Bar8:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
-Bar9:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-Bar10:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
-Bar11:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
-Bar12:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-
-BarLookupOff:
-; format: top bit = fixed roller. Next 4 bits: bits 4-7 of graphics address
-	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
-	.byte	2 << 3		; 0001 - rolling bar 2
-	.byte	9 << 3		; 0010 - rolling bar 9
-	.byte	0 << 3		; 0011 - rolling bar 0
-	.byte	11 << 3		; 0100 - rolling bar 11
-	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
-	.byte	5 << 3		; 0110 - rolling bar 5
-	.byte	3 << 3		; 0111 - rolling bar 3
-	.byte	8 << 3		; 1000 - rolling bar 8
-	.byte	10 << 3		; 1001 - rolling bar 10
-	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
-	.byte	6 << 3		; 1011 - rolling bar 6
-	.byte	1 << 3		; 1100 - rolling bar 1
-	.byte	4 << 3		; 1101 - rolling bar 4
-	.byte	7 << 3		; 1110 - rolling bar 7
-	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
-
-BarLookupOn:
-	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
-	.byte	11 << 3		; 0100 - rolling bar 11
-	.byte	8 << 3		; 1000 - rolling bar 8
-	.byte	1 << 3		; 1100 - rolling bar 1
-	.byte	2 << 3		; 0001 - rolling bar 2
-	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
-	.byte	10 << 3		; 1001 - rolling bar 10
-	.byte	4 << 3		; 1101 - rolling bar 4
-	.byte	9 << 3		; 0010 - rolling bar 9
-	.byte	5 << 3		; 0110 - rolling bar 5
-	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
-	.byte	7 << 3		; 1110 - rolling bar 7
-	.byte	0 << 3		; 0011 - rolling bar 0
-	.byte	3 << 3		; 0111 - rolling bar 3
-	.byte	6 << 3		; 1011 - rolling bar 6
-	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
-
-BarRotation:
-	.byte	16,16,16,15,15,14,14,13,12,11,10,9
-        .byte	8,7,6,5,4,3,2,2,1,1,0,0
-
 	.align	$100,0
 ; Signature
 ; MUST NO CROSS PAGE BOUNDARY
@@ -1193,6 +1111,89 @@ Colors1:
         .byte	$64,$66,$64,$66,$68,$66,$68,$68,$66,$68,$66,$64,$66,$64
         .byte	$62,$64,$62
 
+
+
+; bar palette
+
+Pal1:
+	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
+	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
+
+Pal2:
+	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
+
+MBLogo:
+	.byte	%10,%00,%10,%00,%11,%01
+	.byte	%10,%10,%11,%00,%10,%10
+	.byte	%10,%10,%11,%00,%10,%10
+	.byte	%10,%01,%10,%00,%10,%10
+	.byte	%10,%01,%10,%00,%11,%01
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%10,%10
+	.byte	%10,%00,%10,%00,%11,%01
+
+; bar order
+; 00 01 02 03 04 05 06 07 08 09 10 11 12
+; 00 11 00 01 11 01 10 11 10 00 10 01 00
+
+	.align	$100,0
+
+Bar0:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar1:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar2:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar3:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar4:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar5:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar6:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar7:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+Bar8:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar9:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+Bar10:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
+Bar11:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+Bar12:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+BarLookupOff:
+; format: top bit = fixed roller. Next 4 bits: bits 4-7 of graphics address
+	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
+	.byte	2 << 3		; 0001 - rolling bar 2
+	.byte	9 << 3		; 0010 - rolling bar 9
+	.byte	0 << 3		; 0011 - rolling bar 0
+	.byte	11 << 3		; 0100 - rolling bar 11
+	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
+	.byte	5 << 3		; 0110 - rolling bar 5
+	.byte	3 << 3		; 0111 - rolling bar 3
+	.byte	8 << 3		; 1000 - rolling bar 8
+	.byte	10 << 3		; 1001 - rolling bar 10
+	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
+	.byte	6 << 3		; 1011 - rolling bar 6
+	.byte	1 << 3		; 1100 - rolling bar 1
+	.byte	4 << 3		; 1101 - rolling bar 4
+	.byte	7 << 3		; 1110 - rolling bar 7
+	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+
+BarLookupOn:
+	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
+	.byte	11 << 3		; 0100 - rolling bar 11
+	.byte	8 << 3		; 1000 - rolling bar 8
+	.byte	1 << 3		; 1100 - rolling bar 1
+	.byte	2 << 3		; 0001 - rolling bar 2
+	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
+	.byte	10 << 3		; 1001 - rolling bar 10
+	.byte	4 << 3		; 1101 - rolling bar 4
+	.byte	9 << 3		; 0010 - rolling bar 9
+	.byte	5 << 3		; 0110 - rolling bar 5
+	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
+	.byte	7 << 3		; 1110 - rolling bar 7
+	.byte	0 << 3		; 0011 - rolling bar 0
+	.byte	3 << 3		; 0111 - rolling bar 3
+	.byte	6 << 3		; 1011 - rolling bar 6
+	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+
+BarRotation:
+	.byte	16,16,16,15,15,14,14,13,12,11,10,9
+        .byte	8,7,6,5,4,3,2,2,1,1,0,0
 
 ; Reset / Start vectors
 	.org	$FFFC
