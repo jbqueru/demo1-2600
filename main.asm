@@ -345,51 +345,50 @@ MainLoop:			; +3/3 from the JMP that gets here
 
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
-BarInit:
-	LDA	#(BarPause1 & $FF)
-        STA	_ZP_MAINJMP1
-	LDA	#(BarPause1 >> 8)
-        STA	_ZP_MAINJMP1 + 1
-	LDA	#(BarPause2 & $FF)
-        STA	_ZP_MAINJMP2
-	LDA	#(BarPause2 >> 8)
-        STA	_ZP_MAINJMP2 + 1
+BarInit:			;
+	LDA	#(BarBlank1 & $FF)
+        STA	_ZP_MAINJMP1	;
+	LDA	#(BarBlank1 >> 8)
+        STA	_ZP_MAINJMP1 + 1;
+	LDA	#(BarBlank2 & $FF)
+        STA	_ZP_MAINJMP2	;
+	LDA	#(BarBlank2 >> 8)
+        STA	_ZP_MAINJMP2 + 1;
 	LDA	#(BarDisplay & $FF)
-        STA	_ZP_MAINJMP3
+        STA	_ZP_MAINJMP3	;
 	LDA	#(BarDisplay >> 8)
-        STA	_ZP_MAINJMP3 + 1
-
-	LDA	#0
-	STA	_ZP_BARPHASE
-	LDA	#60
-	STA	_ZP_BARSTEP
-	JMP	BarPause1
+        STA	_ZP_MAINJMP3 + 1;
+				;
+	LDA	#0		;
+	STA	_ZP_BARPHASE	;
+	LDA	#60		;
+	STA	_ZP_BARSTEP	;
+	JMP	BarBlank1	;
 ; End independent clode block	;
 
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
-BarPause1:
-	DEC	_ZP_BARSTEP
-        BPL	StillInBarPause
-	LDA	#(BarURotation1 & $FF)
-        STA	_ZP_MAINJMP1
-	LDA	#(BarURotation1 >> 8)
-        STA	_ZP_MAINJMP1 + 1
-	LDA	#(BarURotation2 & $FF)
-        STA	_ZP_MAINJMP2
-	LDA	#(BarURotation2 >> 8)
-        STA	_ZP_MAINJMP2 + 1
-	LDA	#0
-	STA	_ZP_BARPHASE
-	STA	_ZP_BARSTEP
-        JMP	BarURotation1
-StillInBarPause:
-	JMP	EndJmp1
+BarBlank1:			;
+	DEC	_ZP_BARSTEP	;
+        BPL	StillInBarPause	;
+	LDA	#(BarBitmapOn1 & $FF)
+        STA	_ZP_MAINJMP1	;
+	LDA	#(BarBitmapOn1 >> 8)
+        STA	_ZP_MAINJMP1 + 1;
+	LDA	#(BarBitmapOn2 & $FF)
+        STA	_ZP_MAINJMP2	;
+	LDA	#(BarBitmapOn2 >> 8)
+        STA	_ZP_MAINJMP2 + 1;
+	LDA	#0		;
+	STA	_ZP_BARSTEP	;
+        JMP	BarBitmapOn1	;
+StillInBarPause:		;
+	JMP	EndJmp1		;
 ; End independent clode block	;
 
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
-BarURotation1:
+BarBitmapOn1:
 	LDX	_ZP_BARSTEP	; +3/3
 	LDA	BarRotation,X	; +4/7
 				;
@@ -403,7 +402,16 @@ GenLoopX:			; |
 	BPL	GenLoopX	; |+ +3 - total loop 13*6-1 = 77
 	CPX	#60		; | +2
 	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
-	JMP	EndJmp1		; 
+				;
+	LDX	_ZP_BARSTEP	;
+        INX			;
+	CPX	#25		;
+	BNE	BarWrapped	;
+	LDX	#0		;
+BarWrapped:			;
+	STX	_ZP_BARSTEP	;
+				;
+	JMP	EndJmp1		;
 ; End independent clode block	;
 				;
 EndJmp1:			;
@@ -466,7 +474,7 @@ TimOverscan:			;
 				;
 ; Begin independent clode block	;
 ; Vblank lines 0-28		;
-BarPause2:			;
+BarBlank2:			;
 	LDX	#59		;
 	LDA	#0		;
 FillBarPause:			;
@@ -479,10 +487,10 @@ FillBarPause:			;
 				;
 	JMP	EndJmp2		;
 ; End independent clode block	;
-				;
+
 ; Begin independent clode block ;
 ; Vblank lines 0-28		;
-BarURotation2:			;
+BarBitmapOn2:			;
 	LDY	#59		;
 FillBarGfx:			;
         LDA	MBLogo,Y	; +4/4
@@ -497,14 +505,6 @@ BarFixed:			;
 	DEY			; +2/25
 	BPL	FillBarGfx	; Taken +3/28
 				;
-	LDX	_ZP_BARSTEP	; TODO: move to jump 1
-        INX			;
-	CPX	#24		;
-	BNE	BarWrapped	;
-	LDX	#0		;
-BarWrapped:			;
-	STX	_ZP_BARSTEP	;
-
 	LDA	#0		;
         STA	_ZP_BARREAD	;
 
