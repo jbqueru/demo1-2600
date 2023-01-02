@@ -338,16 +338,20 @@ MainLoop:			; +3/3 from the JMP that gets here
 
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
+; 1205 cycles available		;
 BarInit:			;
-; Init logo pointers
-	LDA	#(Bar0 >> 8)
-        LDX	#0
-BarLoopInitLogo:
-	STA	_ZP_BARGFX1_HI,X
-        INX
-        INX
-        CPX	#12
-        BNE	BarLoopInitLogo
+; Init logo pointers		;
+	LDA	#(Bar0 >> 8)	;
+        LDX	#0		;
+BarLoopInitLogo:		;
+	STA	_ZP_BARGFX1_HI,X;
+        INX			;
+        INX			;
+        CPX	#12		;
+        BNE	BarLoopInitLogo	;
+; Init bar phase
+	LDA	#0		;
+	STA	_ZP_BARPHASE	;
 
 	LDA	#(BarBlank1 & $FF)
         STA	_ZP_MAINJMP1	;
@@ -362,8 +366,6 @@ BarLoopInitLogo:
 	LDA	#(BarDisplay >> 8)
         STA	_ZP_MAINJMP3 + 1;
 				;
-	LDA	#0		;
-	STA	_ZP_BARPHASE	;
 	LDA	#60		;
 	STA	_ZP_BARSTEP	;
 	JMP	BarBlank1	;
