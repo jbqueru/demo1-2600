@@ -819,22 +819,24 @@ BarInitLoop:			;
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
-BarBlank1:			;
-	DEC	_ZP_BARSTEP	;
-        BPL	StillInBarPause	;
-	LDA	#(BarBitmapOnOff1 & $FF)
-        STA	_ZP_MAINJMP1	;
-	LDA	#(BarBitmapOnOff1 >> 8)
-        STA	_ZP_MAINJMP1 + 1;
-	LDA	#(BarBitmapOn2 & $FF)
-        STA	_ZP_MAINJMP2	;
-	LDA	#(BarBitmapOn2 >> 8)
-        STA	_ZP_MAINJMP2 + 1;
-	LDA	#0		;
-	STA	_ZP_BARSTEP	;
-        JMP	BarBitmapOnOff1	;
-StillInBarPause:		;
+BarPause1:			;
 	JMP	EndJmp1		;
+; End independent clode block	;
+
+; Begin independent clode block	;
+; Vblank lines 0-28		;
+; 2117 cycles available		;
+BarPause2:			;
+	LDA	#0		;
+	STA	_ZP_BARREAD	;
+				;
+	LDX	_ZP_BARSTEP	;
+	DEX			;
+	STX	_ZP_BARSTEP	;
+	BNE	BarStillPause	;
+	JSR	BarAdvancePhase	;
+BarStillPause:
+	JMP	EndJmp2		;
 ; End independent clode block	;
 
 ; Begin independent clode block	;
@@ -1123,14 +1125,42 @@ LinesRoller:			;
 ; -------------------------------
 
 BarAdvancePhase:
-	LDY	_ZP_BARPHASE	;
-	LDA	BarScript,Y	;
-	BMI	BarLogoPhase	;
-	BNE	BarPausePhase	;
-        RTS
-BarPausePhase:
+	LDY	_ZP_BARPHASE
+	LDA	BarScript,Y
+	INY
+	STY	_ZP_BARPHASE
+	TAY			; Set processor flags from A
+	BMI	BarBitmapPhase
+	BNE	BarPausePhase
+; Go back to Init
+; Reset jump target for beginning of bar roller display
+	LDA	#(BarInit1 & $FF)
+	STA	_ZP_MAINJMP1
+	LDA	#(BarInit1 >> 8)
+	STA	_ZP_MAINJMP1 + 1
 	RTS
-BarLogoPhase:
+; Advance to a pause
+BarPausePhase:
+	STA	_ZP_BARSTEP
+	LDA	#(BarPause1 & $FF)
+	STA	_ZP_MAINJMP1
+	LDA	#(BarPause1 >> 8)
+	STA	_ZP_MAINJMP1 + 1
+	LDA	#(BarPause2 & $FF)
+	STA	_ZP_MAINJMP2
+	LDA	#(BarPause2 >> 8)
+	STA	_ZP_MAINJMP2 + 1
+	RTS
+; Advance to a bitmap display
+BarBitmapPhase:
+	LDA	#(BarBitmapOnOff1 & $FF)
+	STA	_ZP_MAINJMP1
+	LDA	#(BarBitmapOnOff1 >> 8)
+	STA	_ZP_MAINJMP1 + 1
+	LDA	#(BarBitmapOn2 & $FF)
+	STA	_ZP_MAINJMP2
+	LDA	#(BarBitmapOn2 >> 8)
+	STA	_ZP_MAINJMP2 + 1
 	RTS
 
 ; The order in which the bar animations run.
