@@ -238,9 +238,9 @@ ClearZeroPage:
 	BNE	ClearZeroPage
 
 ; Init jump target
-	LDA	#(BarInit & $FF)
+	LDA	#(BarInit1 & $FF)
         STA	_ZP_MAINJMP1
-	LDA	#(BarInit >> 8)
+	LDA	#(BarInit1 >> 8)
         STA	_ZP_MAINJMP1 + 1
 
 ; Set color pointer for signature background
@@ -769,7 +769,7 @@ SigColors:
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
-BarInit:			;
+BarInit1:			;
 ; Init logo pointers		;
 	LDA	#(Bar0 >> 8)	;
         LDX	#0		;
@@ -782,25 +782,38 @@ BarLoopInitLogo:		;
 ; Init bar phase		;
 	LDA	#0		;
 	STA	_ZP_BARPHASE	;
-
-
-
-	LDA	#(BarBlank1 & $FF)
-        STA	_ZP_MAINJMP1	;
-	LDA	#(BarBlank1 >> 8)
-        STA	_ZP_MAINJMP1 + 1;
-	LDA	#(BarBlank2 & $FF)
-        STA	_ZP_MAINJMP2	;
-	LDA	#(BarBlank2 >> 8)
-        STA	_ZP_MAINJMP2 + 1;
+				;
+; The display routine is the same for all script phases
 	LDA	#(BarDisplay & $FF)
         STA	_ZP_MAINJMP3	;
 	LDA	#(BarDisplay >> 8)
         STA	_ZP_MAINJMP3 + 1;
 				;
-	LDA	#60		;
-	STA	_ZP_BARSTEP	;
-	JMP	BarBlank1	;
+; Set up the second part of the init code
+	LDA	#(BarInit2 & $FF)
+        STA	_ZP_MAINJMP2	;
+	LDA	#(BarInit2 >> 8);
+        STA	_ZP_MAINJMP2 + 1;
+				;
+	JMP	EndJmp1		;
+; End independent clode block	;
+
+; Begin independent clode block	;
+; Vblank lines 0-28		;
+; 2117 cycles available		;
+BarInit2:			;
+	LDX	#59		;
+	LDA	#0		;
+BarInitLoop:			;
+	STA	_ZP_BAROFF,X	; + +4
+	DEX			; | +2
+	BPL	BarInitLoop	; + +3 when taken - loop total 539
+				;
+	LDA	#0		;
+	STA	_ZP_BARREAD	;
+				;
+	JSR	BarAdvancePhase	;
+	JMP	EndJmp2		;
 ; End independent clode block	;
 
 ; Begin independent clode block	;
@@ -851,23 +864,6 @@ BarWrapped:			;
 	STX	_ZP_BARSTEP	;
 				;
 	JMP	EndJmp1		;
-; End independent clode block	;
-
-; Begin independent clode block	;
-; Vblank lines 0-28		;
-; 2117 cycles available		;
-BarBlank2:			;
-	LDX	#59		;
-	LDA	#0		;
-FillBarPause:			;
-	STA	_ZP_BAROFF,X	;
-	DEY			;
-	BPL	FillBarPause	;
-				;
-	LDA	#0		;
-	STA	_ZP_BARREAD	;
-				;
-	JMP	EndJmp2		;
 ; End independent clode block	;
 
 ; Begin independent clode block ;
@@ -1126,6 +1122,24 @@ LinesRoller:			;
 ; Continue active line 191 up	;
 ; -------------------------------
 
+BarAdvancePhase:
+	LDY	_ZP_BARPHASE	;
+	LDA	BarScript,Y	;
+	BMI	BarLogoPhase	;
+	BNE	BarPausePhase	;
+        RTS
+BarPausePhase:
+	RTS
+BarLogoPhase:
+	RTS
+
+; The order in which the bar animations run.
+; 0 = end
+; 1-127 = pause (delay in frames)
+; 128+ = bitmap on/off (detils TBD)
+; 
+BarScript:
+	.byte	60,128,0
 
 ; Palette for the roller bars themselves
 ; This is for the active state - inactive is computed dynamically
@@ -1133,9 +1147,14 @@ BarPal1:
 	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
 	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
 
-; Palette for the axle between the rollers
-BarPal2:
-	.byte	0,0,0,0,0,0,$74,$7A,$7A,$74,0,0,0,0,0,0
+; The rotation steps for the bar animation.
+BarRotation:
+	.byte	16,16,16,15,15,14,14,13,12,11,10,9
+        .byte	8,7,6,5,4,3,2,2,1,1,0,0
+
+; TODO: there's a buffer overflow here.
+	.byte	31
+
 
 ; MegaBuSTers logo, ordered to match the nibbles in the _TIA_PFn registers
 BarMBLogo:
@@ -1229,13 +1248,10 @@ BarLookupOff:
 	.byte	7 << 3		; 1110 - rolling bar 7
 	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
 
+; Palette for the axle between the rollers
+BarPal2:
+	.byte	0,0,0,0,0,0,$74,$7A,$7A,$74,0,0,0,0,0,0
 
-BarRotation:
-	.byte	16,16,16,15,15,14,14,13,12,11,10,9
-        .byte	8,7,6,5,4,3,2,2,1,1,0,0
-
-; TODO: there's a buffer overflow here.
-	.byte	31
 
 ; ###############################
 ; ###############################
