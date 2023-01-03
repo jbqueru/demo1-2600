@@ -857,14 +857,6 @@ GenLoopX:			; |
 	CPX	#60		; | +2
 	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
 				;
-	LDX	_ZP_BARSTEP	;
-        INX			;
-	CPX	#25		;
-	BNE	BarWrapped	;
-	LDX	#0		;
-BarWrapped:			;
-	STX	_ZP_BARSTEP	;
-				;
 	JMP	EndJmp1		;
 ; End independent clode block	;
 
@@ -886,9 +878,18 @@ BarFixedOn:			;
 	DEY			; +2/25
 	BPL	FillBarGfxOn	; Taken +3/28
 				;
+BarBitmapOnOff2End:
 	LDA	#0		;
         STA	_ZP_BARREAD	;
 
+	LDX	_ZP_BARSTEP	;
+        INX			;
+	CPX	#24		;
+	STX	_ZP_BARSTEP	;
+	BNE	BarWrapped	;
+	JSR	BarAdvancePhase	;
+BarWrapped:			;
+				;
 	JMP	EndJmp2		;
 ; End independent clode block	;
 
@@ -909,11 +910,8 @@ BarFixedOff:			;
 	STA	_ZP_BAROFF,Y	; +5/23
 	DEY			; +2/25
 	BPL	FillBarGfxOff	; Taken +3/28
-				;
-	LDA	#0		;
-        STA	_ZP_BARREAD	;
 
-	JMP	EndJmp2		;
+	JMP	BarBitmapOnOff2End
 ; End independent clode block	;
 
 	.align	$100,$EA	; $EA is NOP
@@ -1169,7 +1167,7 @@ BarBitmapPhase:
 ; 128+ = bitmap on/off (detils TBD)
 ; 
 BarScript:
-	.byte	60,128,0
+	.byte	60,128,30,0
 
 ; Palette for the roller bars themselves
 ; This is for the active state - inactive is computed dynamically
