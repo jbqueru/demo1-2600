@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: Apache-2.0
 ;
-; Portions Copyright 2022 Jean-Baptiste M. "JBQ" "Djaybee" Queru
-; Portions Copyright 2023 Jean-Baptiste M. "JBQ" "Djaybee" Queru
+; Portions Copyright 2022 Jean-Baptiste M. "JBQ" "Djaybee" "jbqueru" Queru
+; Portions Copyright 2023 Jean-Baptiste M. "JBQ" "Djaybee" "jbqueru" Queru
 ;
 ; Licensed under the Apache License, Version 2.0 (the "License");
 ; you may not use this file except in compliance with the License.
@@ -1167,7 +1167,7 @@ BarBitmapPhase:
 ; 128+ = bitmap on/off (detils TBD)
 ; 
 BarScript:
-	.byte	60,128,30,0
+	.byte	60,128,36,0
 
 ; Palette for the roller bars themselves
 ; This is for the active state - inactive is computed dynamically
@@ -1179,10 +1179,6 @@ BarPal1:
 BarRotation:
 	.byte	16,16,16,15,15,14,14,13,12,11,10,9
         .byte	8,7,6,5,4,3,2,2,1,1,0,0
-
-; TODO: there's a buffer overflow here.
-	.byte	31
-
 
 ; MegaBuSTers logo, ordered to match the nibbles in the _TIA_PFn registers
 BarMBLogo:
