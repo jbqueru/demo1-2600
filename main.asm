@@ -783,6 +783,8 @@ BarLoopInitLogo:		;
 	LDA	#0		;
 	STA	_ZP_BARPHASE	;
 
+
+
 	LDA	#(BarBlank1 & $FF)
         STA	_ZP_MAINJMP1	;
 	LDA	#(BarBlank1 >> 8)
@@ -874,7 +876,7 @@ FillBarPause:			;
 BarBitmapOn2:			;
 	LDY	#59		;
 FillBarGfxOn:			;
-        LDA	MBLogo,Y	; +4/4
+        LDA	BarMBLogo,Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
 	LDA	BarLookupOn,X	; +4/10
@@ -898,7 +900,7 @@ BarFixedOn:			;
 BarBitmapOff2:			;
 	LDY	#59		;
 FillBarGfxOff:			;
-        LDA	MBLogo,Y	; +4/4
+        LDA	BarMBLogo,Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
 	LDA	BarLookupOff,X	; +4/10
@@ -1036,8 +1038,8 @@ Line19To171:			;
 	; end 63-cycle NOP	;
 				;
 	LDY	#15		; +2/65
-	LDA	Pal1+15		; +4/69
-	LDX	Pal2+15		; +4/73
+	LDA	BarPal1+15		; +4/69
+	LDX	BarPal2+15		; +4/73
 	STX	_TIA_COLUP0	; +3/76
 ; Perfect sync			;
 ; End active line 1, 20, 39, ... 172
@@ -1079,9 +1081,9 @@ LinesRoller:			;
 				; For playfield update, CPU min=48 max=64
 				;
 ; Prepare palette for next line	;
-	LDX	Pal2-1,Y	; +4/63
+	LDX	BarPal2-1,Y	; +4/63
 	STX.w	_TIA_COLUP0	; +3/67 COL=201 PIX=133
-	LDA	Pal1-1,Y	; +4/71
+	LDA	BarPal1-1,Y	; +4/71
 	DEY			; +2/73
 	BPL	LinesRoller	; +3/76 when taken - exact sync
 				; MUST NOT CROSS PAGE BOUNDARY
@@ -1121,18 +1123,22 @@ LinesRoller:			;
 ; -------------------------------
 ; Start active line 191		;
 	JMP	EndJmp3		;
+; Continue active line 191 up	;
+; -------------------------------
 
 
-; bar palette
-
-Pal1:
+; Palette for the roller bars themselves
+; This is for the active state - inactive is computed dynamically
+BarPal1:
 	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
 	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
 
-Pal2:
-	.byte	0,0,0,0,0,0,$74,$7a,$7a,$74,0,0,0,0,0,0
+; Palette for the axle between the rollers
+BarPal2:
+	.byte	0,0,0,0,0,0,$74,$7A,$7A,$74,0,0,0,0,0,0
 
-MBLogo:
+; MegaBuSTers logo, ordered to match the nibbles in the _TIA_PFn registers
+BarMBLogo:
 	.byte	%10,%00,%10,%00,%11,%01
 	.byte	%10,%10,%11,%00,%10,%10
 	.byte	%10,%10,%11,%00,%10,%10
@@ -1144,12 +1150,21 @@ MBLogo:
 	.byte	%10,%00,%10,%00,%10,%10
 	.byte	%10,%00,%10,%00,%11,%01
 
-; bar order
-; 00 01 02 03 04 05 06 07 08 09 10 11 12
-; 00 11 00 01 11 01 10 11 10 00 10 01 00
-
 	.align	$100,0
 
+; There are 4 possible bar states, and a naive implementation would use
+; 16 transitions of 32 lines each (512), which doesn't fit in a 6502 page.
+; Instead, we exploit the fact that 4 of the transitions are between
+; identical states, and the remaining 12 can be designed to overlap,
+; resulting in 13 sets of 16 lines (208), which fits in a 6502 page.
+;
+; TODO: the first and last 16 bytes are intentionally filled with 0,
+; for potential overlap with another data structure.
+;
+; +-------+----------------------------------------+
+; | index | 00 01 02 03 04 05 06 07 08 09 10 11 12 |
+; | value | 00 11 00 01 11 01 10 11 10 00 10 01 00 |
+; +-------+----------------------------------------+
 Bar0:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 Bar1:	.byte	$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
 Bar2:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -1164,25 +1179,17 @@ Bar10:	.byte	$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0,$F0
 Bar11:	.byte	$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
 Bar12:	.byte	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
-BarLookupOff:
-; format: top bit = fixed roller. Next 4 bits: bits 4-7 of graphics address
-	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
-	.byte	2 << 3		; 0001 - rolling bar 2
-	.byte	9 << 3		; 0010 - rolling bar 9
-	.byte	0 << 3		; 0011 - rolling bar 0
-	.byte	11 << 3		; 0100 - rolling bar 11
-	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
-	.byte	5 << 3		; 0110 - rolling bar 5
-	.byte	3 << 3		; 0111 - rolling bar 3
-	.byte	8 << 3		; 1000 - rolling bar 8
-	.byte	10 << 3		; 1001 - rolling bar 10
-	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
-	.byte	6 << 3		; 1011 - rolling bar 6
-	.byte	1 << 3		; 1100 - rolling bar 1
-	.byte	4 << 3		; 1101 - rolling bar 4
-	.byte	7 << 3		; 1110 - rolling bar 7
-	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+; This is the lookup for the offset of the bitmap for a given transition,
+; where bits 0-1 are the bottom graphics (in _TIA_PFn order) and 2-3 are
+; the top graphics. It is called "on" because fixed graphics are stored
+; in bits 0-1, such that this transition is used when such fixed graphics
+; come on screen.
 
+; The output format is optimized for implementation convenience and
+; performance. The top bit indicates whether the source and destination
+; are identical, in which case there should be no animation. The following
+; 4 bits are an offset into the bar graphics, shifted 1 to the right
+; (they get shifted accordingly when they get read).
 BarLookupOn:
 	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
 	.byte	11 << 3		; 0100 - rolling bar 11
@@ -1201,9 +1208,34 @@ BarLookupOn:
 	.byte	6 << 3		; 1011 - rolling bar 6
 	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
 
+; This is the complementary lookup, used when a fixed graphics goes
+; off screen. Bits 0-1 are the top graphics, 2-3 the bottom graphics,
+; and everything else is the same as for the previous set.
+BarLookupOff:
+	.byte	(0 << 3) + $80	; 0000 - fixed bar 0
+	.byte	2 << 3		; 0001 - rolling bar 2
+	.byte	9 << 3		; 0010 - rolling bar 9
+	.byte	0 << 3		; 0011 - rolling bar 0
+	.byte	11 << 3		; 0100 - rolling bar 11
+	.byte	(3 << 3) + $80	; 0101 - fixed bar 3
+	.byte	5 << 3		; 0110 - rolling bar 5
+	.byte	3 << 3		; 0111 - rolling bar 3
+	.byte	8 << 3		; 1000 - rolling bar 8
+	.byte	10 << 3		; 1001 - rolling bar 10
+	.byte	(6 << 3) + $80	; 1010 - fixed bar 6
+	.byte	6 << 3		; 1011 - rolling bar 6
+	.byte	1 << 3		; 1100 - rolling bar 1
+	.byte	4 << 3		; 1101 - rolling bar 4
+	.byte	7 << 3		; 1110 - rolling bar 7
+	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
+
+
 BarRotation:
 	.byte	16,16,16,15,15,14,14,13,12,11,10,9
         .byte	8,7,6,5,4,3,2,2,1,1,0,0
+
+; TODO: there's a buffer overflow here.
+	.byte	31
 
 ; ###############################
 ; ###############################
@@ -1213,7 +1245,7 @@ BarRotation:
 ; ###############################
 ; ###############################
 ; Reset / Start vectors
-	.org	$FFFA
+	.org	$FFFA,0
 	.word	EmptyInterrupt	; NMI / BRK
 	.word	Main		; Reset / Start
 EmptyInterrupt:
