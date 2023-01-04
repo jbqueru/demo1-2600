@@ -208,6 +208,8 @@ _ZP_BARLINE	.equ	$9E	; counts the 10 row of rollers in display loop
 _ZP_BARREAD	.equ	$9F	; offset when reading buffer into pointers
 _ZP_BAROFF	.equ	$A0
 _ZP_BAROFF_END	.equ	$DB
+_ZP_BARBIT	.equ	$DC
+_ZP_BARBIT_HI	.equ	$DD
 ; End variables for roller bar display
 ; -------------------------------
 
@@ -866,7 +868,7 @@ GenLoopX:			; |
 BarBitmapOn2:			;
 	LDY	#59		;
 FillBarGfxOn:			;
-        LDA	BarMBLogo,Y	; +4/4
+        LDA	(_ZP_BARBIT),Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
 	LDA	BarLookupOn,X	; +4/10
@@ -899,7 +901,7 @@ BarWrapped:			;
 BarBitmapOff2:			;
 	LDY	#59		;
 FillBarGfxOff:			;
-        LDA	BarMBLogo,Y	; +4/4
+        LDA	(_ZP_BARBIT),Y	; +4/4
 				; TODO: ORA xxx - that's why it's in A
 	TAX			; +2/6
 	LDA	BarLookupOff,X	; +4/10
@@ -1154,6 +1156,11 @@ BarBitmapPhase:
 	AND	#$7F
         LSR
 	BCC	BarBitmapPhaseOn
+	TAX
+	LDA	BarBitmapLo,X
+	STA	_ZP_BARBIT
+	LDA	BarBitmapHi,X
+	STA	_ZP_BARBIT_HI
 	LDA	#(BarBitmapOnOff1 & $FF)
 	STA	_ZP_MAINJMP1
 	LDA	#(BarBitmapOnOff1 >> 8)
@@ -1164,6 +1171,11 @@ BarBitmapPhase:
 	STA	_ZP_MAINJMP2 + 1
 	RTS
 BarBitmapPhaseOn:
+	TAX
+	LDA	BarBitmapLo,X
+	STA	_ZP_BARBIT
+	LDA	BarBitmapHi,X
+	STA	_ZP_BARBIT_HI
 	LDA	#(BarBitmapOnOff1 & $FF)
 	STA	_ZP_MAINJMP1
 	LDA	#(BarBitmapOnOff1 >> 8)
@@ -1319,10 +1331,21 @@ BarPal2:
 ; 0 = end
 ; 1-127 = pause (delay in frames)
 ; 128+ = bitmap on/off (detils TBD)
-; 
 BarScript:
-	.byte	20,128,20,129,0
+	.byte	20,134,20,135,20,132,20,133,20,130,20,131,20,128,60,129,127,0
 
+
+; The pointers to the logos
+BarBitmapLo:
+	.byte	BarMBLogo & $FF
+	.byte	BarLogo1 & $FF
+	.byte	BarLogo2 & $FF
+	.byte	BarLogo3 & $FF
+BarBitmapHi:
+	.byte	BarMBLogo >> 8
+	.byte	BarLogo1 >> 8
+	.byte	BarLogo2 >> 8
+	.byte	BarLogo3 >> 8
 
 ; The rotation steps for the bar animation.
 BarRotation:
