@@ -1135,7 +1135,7 @@ BarAdvancePhase:
 	LDA	#(BarInit1 & $FF)
 	STA	_ZP_MAINJMP1
 	LDA	#(BarInit1 >> 8)
-	STA	_ZP_MAINJMP1 + 1
+	STA	_ZP_MAINJMP1_HI
 	RTS
 ; Advance to a pause
 BarPausePhase:
@@ -1143,42 +1143,75 @@ BarPausePhase:
 	LDA	#(BarPause1 & $FF)
 	STA	_ZP_MAINJMP1
 	LDA	#(BarPause1 >> 8)
-	STA	_ZP_MAINJMP1 + 1
+	STA	_ZP_MAINJMP1_HI
 	LDA	#(BarPause2 & $FF)
 	STA	_ZP_MAINJMP2
 	LDA	#(BarPause2 >> 8)
-	STA	_ZP_MAINJMP2 + 1
+	STA	_ZP_MAINJMP2_HI
 	RTS
 ; Advance to a bitmap display
 BarBitmapPhase:
+	AND	#$7F
+        LSR
+	BCC	BarBitmapPhaseOn
 	LDA	#(BarBitmapOnOff1 & $FF)
 	STA	_ZP_MAINJMP1
 	LDA	#(BarBitmapOnOff1 >> 8)
 	STA	_ZP_MAINJMP1 + 1
+	LDA	#(BarBitmapOff2 & $FF)
+	STA	_ZP_MAINJMP2
+	LDA	#(BarBitmapOff2 >> 8)
+	STA	_ZP_MAINJMP2 + 1
+	RTS
+BarBitmapPhaseOn:
+	LDA	#(BarBitmapOnOff1 & $FF)
+	STA	_ZP_MAINJMP1
+	LDA	#(BarBitmapOnOff1 >> 8)
+	STA	_ZP_MAINJMP1_HI
 	LDA	#(BarBitmapOn2 & $FF)
 	STA	_ZP_MAINJMP2
 	LDA	#(BarBitmapOn2 >> 8)
-	STA	_ZP_MAINJMP2 + 1
+	STA	_ZP_MAINJMP2_HI
 	RTS
 
-; The order in which the bar animations run.
-; 0 = end
-; 1-127 = pause (delay in frames)
-; 128+ = bitmap on/off (detils TBD)
-; 
-BarScript:
-	.byte	60,128,36,0
+	.align	$100,0
 
-; Palette for the roller bars themselves
-; This is for the active state - inactive is computed dynamically
-BarPal1:
-	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
-	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
-
-; The rotation steps for the bar animation.
-BarRotation:
-	.byte	16,16,16,15,15,14,14,13,12,11,10,9
-        .byte	8,7,6,5,4,3,2,2,1,1,0,0
+; Bitmap, digit 1, ordered to match the nibbles in the _TIA_PFn registers
+BarLogo1:
+	.byte	%00,%00,%00,%00,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%10,%10,%00,%00
+	.byte	%00,%00,%10,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%00,%00,%00
+; Bitmap, digit 2, ordered to match the nibbles in the _TIA_PFn registers
+BarLogo2:
+	.byte	%00,%00,%00,%00,%00,%00
+	.byte	%00,%00,%10,%10,%00,%00
+	.byte	%00,%00,%01,%00,%10,%00
+	.byte	%00,%00,%00,%00,%10,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%10,%00,%00,%00
+	.byte	%00,%00,%01,%00,%00,%00
+	.byte	%00,%00,%01,%00,%00,%00
+	.byte	%00,%00,%11,%10,%10,%00
+	.byte	%00,%00,%00,%00,%00,%00
+; Bitmap, digit 3, ordered to match the nibbles in the _TIA_PFn registers
+BarLogo3:
+	.byte	%00,%00,%00,%00,%00,%00
+	.byte	%00,%00,%10,%10,%00,%00
+	.byte	%00,%00,%01,%00,%10,%00
+	.byte	%00,%00,%00,%00,%10,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%10,%00,%00
+	.byte	%00,%00,%00,%00,%10,%00
+	.byte	%00,%00,%01,%00,%10,%00
+	.byte	%00,%00,%10,%10,%00,%00
+	.byte	%00,%00,%00,%00,%00,%00
 
 ; MegaBuSTers logo, ordered to match the nibbles in the _TIA_PFn registers
 BarMBLogo:
@@ -1193,7 +1226,12 @@ BarMBLogo:
 	.byte	%10,%00,%10,%00,%10,%10
 	.byte	%10,%00,%10,%00,%11,%01
 
-	.align	$100,0
+; Palette for the roller bars themselves
+; This is for the active state - inactive is computed dynamically
+; MUST NOT CROSS PAGE BOUNDARY, MUST NOT BE AT ADDRESS 0 WITHIN PAGE
+BarPal1:
+	.byte	$16,$18,$1A,$1A,$1C,$1C,$1E,$1E
+	.byte	$1E,$1E,$1C,$1C,$1A,$1A,$18,$16
 
 ; There are 4 possible bar states, and a naive implementation would use
 ; 16 transitions of 32 lines each (512), which doesn't fit in a 6502 page.
@@ -1273,8 +1311,23 @@ BarLookupOff:
 	.byte	(1 << 3) +$80	; 1111 - fixed bar 1
 
 ; Palette for the axle between the rollers
+; MUST NOT CROSS PAGE BOUNDARY, MUST NOT BE AT ADDRESS 0 WITHIN PAGE
 BarPal2:
 	.byte	0,0,0,0,0,0,$74,$7A,$7A,$74,0,0,0,0,0,0
+
+; The order in which the bar animations run.
+; 0 = end
+; 1-127 = pause (delay in frames)
+; 128+ = bitmap on/off (detils TBD)
+; 
+BarScript:
+	.byte	20,128,20,129,0
+
+
+; The rotation steps for the bar animation.
+BarRotation:
+	.byte	16,16,16,15,15,14,14,13,12,11,10,9
+        .byte	8,7,6,5,4,3,2,2,1,1,0,0
 
 
 ; ###############################
