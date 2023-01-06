@@ -224,6 +224,7 @@ _ZP_BARBIT_HI	.equ	$DD
 ; ########################
 
 	.org	$F000,$EA	; $EA is NOP
+	.byte	"https://github.com/jbqueru/mb77-2600",0
 Main:
 ; Set up CPU
 	CLD			; Clear decimal mode
@@ -249,6 +250,8 @@ ClearZeroPage:
 ; It's off-by-three because the index primarily counts lines in the sprite
 ; bitmap, from 13 down to 0, such that there are 3 lines to go after 0
 ; (i.e. at addresses before that of line 0).
+; TODO: this should eventually be part of the demo phase, so that it can
+; change accordingly.
 	LDA	#(SigColors + 3 & $FF)
 	STA	_ZP_SIGPAL
 	LDA	#(SigColors + 3 >> 8)
@@ -359,6 +362,11 @@ TimVblank:			;
 	BNE	TimVblank	;
 				;
 	JMP	(_ZP_MAINJMP3)	;
+; End vblank line 28 covered at jump destination
+; -------------------------------
+; Many lines covered at jump destination
+; -------------------------------
+; Start active line 191 covered at jump destination
 EndJmp3:			;
 	STA	_TIA_WSYNC	; +3/(3>76)
 ; End active line 191		;
@@ -768,6 +776,7 @@ SigColors:
 ; generated separately from the combination loop, for better performance because
 ; of the very low register count.
 
+; -------------------------------
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
@@ -799,7 +808,9 @@ BarLoopInitLogo:		;
 				;
 	JMP	EndJmp1		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block	;
 ; Vblank lines 0-28		;
 ; 2117 cycles available		;
@@ -817,14 +828,18 @@ BarInitLoop:			;
 	JSR	BarAdvancePhase	;
 	JMP	EndJmp2		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
 BarPause1:			;
 	JMP	EndJmp1		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block	;
 ; Vblank lines 0-28		;
 ; 2117 cycles available		;
@@ -840,7 +855,9 @@ BarPause2:			;
 BarStillPause:
 	JMP	EndJmp2		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block	;
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
@@ -861,7 +878,9 @@ GenLoopX:			; |
 				;
 	JMP	EndJmp1		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block ;
 ; Vblank lines 0-28		;
 ; 2117 cycles available		;
@@ -880,10 +899,10 @@ BarFixedOn:			;
 	DEY			; +2/25
 	BPL	FillBarGfxOn	; Taken +3/28
 				;
-BarBitmapOnOff2End:
+BarBitmapOnOff2End:		;
 	LDA	#0		;
         STA	_ZP_BARREAD	;
-
+				;
 	LDX	_ZP_BARSTEP	;
         INX			;
 	CPX	#24		;
@@ -894,7 +913,9 @@ BarWrapped:			;
 				;
 	JMP	EndJmp2		;
 ; End independent clode block	;
+; -------------------------------
 
+; -------------------------------
 ; Begin independent clode block ;
 ; Vblank lines 0-28		;
 ; 2117 cycles available		;
@@ -912,11 +933,15 @@ BarFixedOff:			;
 	STA	_ZP_BAROFF,Y	; +5/23
 	DEY			; +2/25
 	BPL	FillBarGfxOff	; Taken +3/28
-
+				;
 	JMP	BarBitmapOnOff2End
 ; End independent clode block	;
+; -------------------------------
 
 	.align	$100,$EA	; $EA is NOP
+; -------------------------------
+; Begin independent clode block ;
+; Continue vblank line 28 from caller
 BarDisplay:			;
 	STA	_TIA_WSYNC	; +3/(?>76)
 ; End vblank line 28		;
@@ -1036,8 +1061,8 @@ Line19To171:			;
 	; end 63-cycle NOP	;
 				;
 	LDY	#15		; +2/65
-	LDA	BarPal1+15		; +4/69
-	LDX	BarPal2+15		; +4/73
+	LDA	BarPal1+15	; +4/69
+	LDX	BarPal2+15	; +4/73
 	STX	_TIA_COLUP0	; +3/76
 ; Perfect sync			;
 ; End active line 1, 20, 39, ... 172
@@ -1122,6 +1147,7 @@ LinesRoller:			;
 ; Start active line 191		;
 	JMP	EndJmp3		;
 ; Continue active line 191 up	;
+; End independent clode block	;
 ; -------------------------------
 
 BarAdvancePhase:
@@ -1330,7 +1356,14 @@ BarPal2:
 ; The order in which the bar animations run.
 ; 0 = end
 ; 1-127 = pause (delay in frames)
-; 128+ = bitmap on/off (detils TBD)
+; 128-135 = bitmap on/off pair
+
+; TODO:
+; * on/off with delay
+; * on/off in slices
+; * another on-off?
+; * special effects?
+
 BarScript:
 	.byte	20,134,20,135,20,132,20,133,20,130,20,131,20,128,60,129,127,0
 
