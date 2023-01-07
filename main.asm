@@ -429,11 +429,13 @@ EndJmp3:			;
 	STA	_TIA_REFP0	; +3/42
 	STA	_TIA_REFP1	; +3/45
 				;
-	; begin 10-cycle NOP	;
-	PHP			; +3/48
-        BIT	0		; +3/51
+; Playfield reflection off	;
+	STA	_TIA_CTRLPF	; +3/48
+				;
+	; begin 7-cycle NOP	;
+	PHP			; +3/51
 	PLP			; +4/55
-	; end 10-cycle NOP	;
+	; end 7-cycle NOP	;
 				;
 ; Player 0 move 1 pixel to the left (clock 74 trick flips top bit)
 	LDA	#$90		; +2/57
@@ -1176,6 +1178,19 @@ BarAdvancePhase:
 	LDA	#(BarInit1 >> 8)
 	STA	_ZP_MAINJMP1_HI
 	RTS
+	LDA	#(MSDisp1 & $FF)
+	STA	_ZP_MAINJMP1
+	LDA	#(MSDisp1 >> 8)
+	STA	_ZP_MAINJMP1_HI
+	LDA	#(MSDisp2 & $FF)
+	STA	_ZP_MAINJMP2
+	LDA	#(MSDisp2 >> 8)
+	STA	_ZP_MAINJMP2_HI
+	LDA	#(MSDisp3 & $FF)
+	STA	_ZP_MAINJMP3
+	LDA	#(MSDisp3 >> 8)
+	STA	_ZP_MAINJMP3_HI
+	RTS
 ; Advance to a pause
 BarPausePhase:
 	STA	_ZP_BARSTEP
@@ -1190,6 +1205,8 @@ BarPausePhase:
 	RTS
 ; Advance to a bitmap display
 BarBitmapPhase:
+	LDX	#0
+	STX	_ZP_BARSTEP
 	AND	#$7F
         LSR
 	BCC	BarBitmapPhaseOn
@@ -1376,6 +1393,7 @@ BarPal2:
 ; * special effects?
 
 BarScript:
+;	.byte	128,129,0
 	.byte	20,134,20,135,20,132,20,133,20,130,20,131,20,128,60,129,127,0
 
 
@@ -1401,6 +1419,74 @@ BarRotation:
 
 	.byte	0,0,0,0,0,0,0,0,0,0
 	.byte	0,0,0,0,0,0,0,0,0,0
+
+; ##################
+; #                #
+; #  Megascroller  #
+; #                #
+; ##################
+
+MSDisp1:
+	LDA	#1
+	STA	_TIA_CTRLPF
+
+	LDA	#$55
+        STA	144
+        STA	146
+        STA	148
+	LDA	#$AA
+        STA	145
+        STA	147
+        STA	149
+
+	LDA	#%11011011
+
+	JMP	EndJmp1
+
+MSDisp2:
+	JMP	EndJmp2
+
+MSDisp3:
+	STA	_TIA_WSYNC	; end blank 28
+
+	LDX	#13
+	DEX
+	BNE	*-1
+	NOP
+
+	LDA	#0
+	STA	_TIA_VBLANK
+        STA	_TIA_WSYNC	; end blank 29
+
+	LDY	#191
+        CMP	0
+MSLines:			; ?/5
+	LDA	144,X		; +4/9
+	STA	_TIA_PF0	; +3/12 - range *53..21
+	LDA	145,X		; +4/16
+	STA	_TIA_PF1	; +3/19 - range *64..27
+	LDA	146,X		; +4/23
+	STA	_TIA_PF2	; +3/26 - range *75..37
+
+	.repeat	6
+        NOP			; +12/38
+        .repend
+        CMP	0		; +3/41
+
+	LDA	147,X		; +4/45
+	STA	_TIA_PF2	; +3/48 - range 48..48
+	LDA	148,X		; +4/54
+	STA	_TIA_PF1	; +3/60 - range 37..53
+	LDA	149,X		; +4/66
+	STA	_TIA_PF0	; +3/72 - range 27..69
+
+
+
+	STA	_TIA_WSYNC	; active 0 - 190
+	DEY			; +2/2
+        BNE	MSLines		; Taken: +3/5
+
+	JMP	EndJmp3		; active 191 ends after jump
 
 ; ###############################
 ; ###############################
