@@ -1,4 +1,4 @@
-# demo1-2600
+# mb77-2600
 A first actual demo attempt for the 2600.
 
 Total resolution 160*212
