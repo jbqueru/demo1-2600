@@ -862,19 +862,30 @@ BarStillPause:
 ; Overscan lines 0-16		;
 ; 1205 cycles available		;
 BarBitmapOnOff1:		;
-	LDX	_ZP_BARSTEP	; +3/3
-	LDA	BarRotation,X	; +4/7
+	LDA	_ZP_BARSTEP	; +3/3
+        CLC
+        ADC	#18
+        TAY
 				;
 	LDX	#0		; +2/9
-GenLoopY:			;
-	LDY	#5		; + +2
-GenLoopX:			; |
-	STA	_ZP_BAROFF,X	; |+ +4
-	INX			; || +2
-	DEY			; || +2
-	BPL	GenLoopX	; |+ +3 - total loop 13*6-1 = 77
+BarGenLoop:			;
+	LDA	BarRotation,Y	; + 4
+        DEY
+        DEY
+	STA	_ZP_BAROFF,X	; + +4
+	INX			; | +2
+	STA	_ZP_BAROFF,X	; | +4
+	INX			; | +2
+	STA	_ZP_BAROFF,X	; | +4
+	INX			; | +2
+	STA	_ZP_BAROFF,X	; | +4
+	INX			; | +2
+	STA	_ZP_BAROFF,X	; | +4
+	INX			; | +2
+	STA	_ZP_BAROFF,X	; | +4
+	INX			; | +2
 	CPX	#60		; | +2
-	BNE	GenLoopY	; + +3 - total loop 10*84-1 = 839
+	BNE	BarGenLoop	; + +3
 				;
 	JMP	EndJmp1		;
 ; End independent clode block	;
@@ -905,7 +916,7 @@ BarBitmapOnOff2End:		;
 				;
 	LDX	_ZP_BARSTEP	;
         INX			;
-	CPX	#24		;
+	CPX	#42		;
 	STX	_ZP_BARSTEP	;
 	BNE	BarWrapped	;
 	JSR	BarAdvancePhase	;
@@ -1382,9 +1393,14 @@ BarBitmapHi:
 
 ; The rotation steps for the bar animation.
 BarRotation:
+	.byte	16,16,16,16,16,16,16,16,16
+	.byte	16,16,16,16,16,16,16,16,16
+
 	.byte	16,16,16,15,15,14,14,13,12,11,10,9
         .byte	8,7,6,5,4,3,2,2,1,1,0,0
 
+	.byte	0,0,0,0,0,0,0,0,0,0
+	.byte	0,0,0,0,0,0,0,0,0,0
 
 ; ###############################
 ; ###############################
